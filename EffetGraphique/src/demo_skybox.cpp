@@ -64,20 +64,20 @@ layout(location = 0) in vec3 aPosition;
 uniform mat4 uViewProj;
 
 // Varyings (variables that are passed to fragment shader with perspective interpolation)
-out vec2 vUV;
+out vec3 vUV;
 
 void main()
 {
-    vUV = vec2(aPosition);
+    vUV = vec3(aPosition.xy, -aPosition.z);
     gl_Position = uViewProj * vec4(aPosition, 1.0);
 })GLSL";
 
 static const char* sbFragmentShaderStr = R"GLSL(
 // Varyings
-in vec2 vUV;
+in vec3 vUV;
 
 // Uniforms
-uniform sampler2D skybox;
+uniform samplerCube skybox;
 
 // Shader outputs
 out vec4 oColor;
@@ -153,7 +153,7 @@ demo_skybox::demo_skybox()
         for (int i = 0; i < 6; i++)
         {
             std::string texName = sbName + std::to_string(i) + fileExtension;
-            GL::UploadCubemapTexture(texName.c_str(), i, image_flags::IMG_FLIP, &texWidth, &texHeight);
+            GL::UploadCubemapTexture(texName.c_str(), i, image_flags::IMG_FORCE_RGB, &texWidth, &texHeight);
         }
 
         // Texture filters
@@ -260,9 +260,11 @@ void demo_skybox::Update(const platform_io& IO)
     glClearColor(0.2f, 0.2f, 0.2f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-
-    mat4 vp = ProjectionMatrix * ViewMatrix;
-    debugMatrix = vp;
+    mat4 rotateOnlyViewMatrix = ViewMatrix;
+    rotateOnlyViewMatrix.c[3].x = 0;
+    rotateOnlyViewMatrix.c[3].y = 0;
+    rotateOnlyViewMatrix.c[3].z = 0;
+    mat4 vp = ProjectionMatrix * rotateOnlyViewMatrix;
     glDepthMask(GL_FALSE);
     glUseProgram(SBProgram);
     glUniformMatrix4fv(glGetUniformLocation(SBProgram, "uViewProj"), 1, GL_FALSE, vp.e);
@@ -285,6 +287,7 @@ void demo_skybox::Update(const platform_io& IO)
     v3 ObjectPosition = { 0.f, 0.f, -3.f };
     {
         mat4 ModelMatrix = Mat4::Translate(ObjectPosition);
+        debugMatrix = ModelMatrix;
         DrawQuad(Program, ProjectionMatrix * ViewMatrix * ModelMatrix);
     }
 
