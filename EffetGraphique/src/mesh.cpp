@@ -80,10 +80,10 @@ void* Mesh::BuildQuad(void* Vertices, void* End, const vertex_descriptor& Descri
 
     v3 Normal = { 0.f, 0.f, 1.f };
 
-    vertex_full TopLeft     = { { -0.5f, 0.5f, 0.f }, Normal, { 0.f, 1.f } };
-    vertex_full TopRight    = { {  0.5f, 0.5f, 0.f }, Normal, { 1.f, 1.f } };
-    vertex_full BottomLeft  = { { -0.5f,-0.5f, 0.f }, Normal, { 0.f, 0.f } };
-    vertex_full BottomRight = { {  0.5f,-0.5f, 0.f }, Normal, { 1.f, 0.f } };
+    vertex_full TopLeft     = { { -1.f, 1.f, 0.f }, Normal, { 0.f, 1.f } };
+    vertex_full TopRight    = { {  1.f, 1.f, 0.f }, Normal, { 1.f, 1.f } };
+    vertex_full BottomLeft  = { { -1.f,-1.f, 0.f }, Normal, { 0.f, 0.f } };
+    vertex_full BottomRight = { {  1.f,-1.f, 0.f }, Normal, { 1.f, 0.f } };
 
     vertex_full QuadVertices[] = {
         TopLeft,
@@ -128,6 +128,46 @@ void* Mesh::BuildCube(void* Vertices, void* End, const vertex_descriptor& Descri
 
     return V;
 }
+
+void* Mesh::BuildNormalizedCube(void* Vertices, void* End, const vertex_descriptor& Descriptor)
+{
+    if (GetVertexCount(Vertices, End, Descriptor) < (6 * 6))
+    {
+        fprintf(stderr, "Not enough vertices to create cube\n");
+        return Vertices;
+    }
+
+    void* V = Vertices;
+
+    // FRONT FACE
+    V = Mesh::Transform(
+        V, Mesh::BuildQuad(V, End, Descriptor),
+        Descriptor, Mat4::Translate({ 0.f, 0.f, -1.f }));
+    // BACK FACE
+    V = Mesh::Transform(
+        V, Mesh::BuildQuad(V, End, Descriptor),
+        Descriptor, Mat4::RotateY(Math::Pi()) * Mat4::Translate({ 0.f, 0.f, -1.f }));
+    // RIGHT FACE
+    V = Mesh::Transform(
+        V, Mesh::BuildQuad(V, End, Descriptor),
+        Descriptor, Mat4::RotateY(Math::HalfPi()) * Mat4::Translate({ 0.f, 0.f, -1.f }));
+    // LEFT FACE
+    V = Mesh::Transform(
+        V, Mesh::BuildQuad(V, End, Descriptor),
+        Descriptor, Mat4::RotateY(-Math::HalfPi()) * Mat4::Translate({ 0.f, 0.f, -1.f }));
+    // TOP FACE
+    V = Mesh::Transform(
+        V, Mesh::BuildQuad(V, End, Descriptor),
+        Descriptor, Mat4::RotateY(-Math::HalfPi()) * Mat4::RotateX(Math::HalfPi()) * Mat4::Translate({ 0.f, 0.f, -1.f }));
+    // BOTTOM FACE
+    V = Mesh::Transform(
+        V, Mesh::BuildQuad(V, End, Descriptor),
+        Descriptor, Mat4::RotateY(-Math::HalfPi()) * Mat4::RotateX(-Math::HalfPi()) * Mat4::Translate({ 0.f, 0.f, -1.f }));
+
+
+    return V;
+}
+
 
 void* Mesh::BuildInvertedCube(void* Vertices, void* End, const vertex_descriptor& Descriptor)
 {

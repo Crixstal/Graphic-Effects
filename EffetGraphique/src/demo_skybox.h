@@ -12,20 +12,31 @@ public:
     demo_skybox();
     virtual ~demo_skybox();
     virtual void Update(const platform_io& IO);
-
+    void DisplayDebugUI();
 private:
     // 3d camera
     camera Camera = {};
     
-    // GL objects needed by this demo
-    GLuint Program = 0;
-    GLuint Texture = 0;
-    GLuint skybox[6] = {};
+    // Shader programs
+    GLuint Program = 0; // Base
+    GLuint SBProgram = 0;
 
+    // Textures/cubemaps
+    GLuint Texture = 0;
+    GLuint skybox = 0;
+
+    // Meshes
     GLuint VAO = 0;
     GLuint VertexBuffer = 0;
     int VertexCount = 0;
 
+    GLuint cubeVAO = 0;
+    GLuint cubeVertexBuffer = 0;
+    int cubeVertexCount = 0;
+
     int texWidth = 0;
     int texHeight = 0;
+
+    bool showDebugMatrix = false;
+    mat4 debugMatrix = Mat4::Identity();
 };

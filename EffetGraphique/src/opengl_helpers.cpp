@@ -250,11 +250,11 @@ void GL::UploadTexture(const char* Filename, int ImageFlags, int* WidthOut, int*
     uint8_t* Image = stbi_load(Filename, &Width, &Height, (DesiredChannels == 0) ? &Channels : nullptr, DesiredChannels);
     if (Image == nullptr)
     {
-        fprintf(stderr, "Image loading failed on '%s'\n", Filename);
-        return;
-    }
+        fprintf(stderr, "[ERROR] Image loading failed on '%s'\n", Filename);
+		return;
+	}
 
-	GLint GLImageFormat[] = 
+	GLint GLImageFormat[] =
 	{
 		-1, // 0 Channels, unused
 		GL_RED,
@@ -263,21 +263,84 @@ void GL::UploadTexture(const char* Filename, int ImageFlags, int* WidthOut, int*
 		GL_RGBA
 	};
 
-    // Uploading
-    glTexImage2D(GL_TEXTURE_2D, 0, GLImageFormat[Channels], Width, Height, 0, GLImageFormat[Channels], GL_UNSIGNED_BYTE, Image);
-    stbi_image_free(Image);
+	// Uploading
+	glTexImage2D(GL_TEXTURE_2D, 0, GLImageFormat[Channels], Width, Height, 0, GLImageFormat[Channels], GL_UNSIGNED_BYTE, Image);
+	stbi_image_free(Image);
 
-    // Mipmaps
-    if (ImageFlags & IMG_GEN_MIPMAPS)
-        glGenerateMipmap(GL_TEXTURE_2D);
+	// Mipmaps
+	if (ImageFlags & IMG_GEN_MIPMAPS)
+		glGenerateMipmap(GL_TEXTURE_2D);
 
-    if (WidthOut)
-        *WidthOut = Width;
+	if (WidthOut)
+		*WidthOut = Width;
 
-    if (HeightOut)
-        *HeightOut = Height;
+	if (HeightOut)
+		*HeightOut = Height;
 
-    stbi_set_flip_vertically_on_load(0); // Always reset to default value
+	stbi_set_flip_vertically_on_load(0); // Always reset to default value
+}
+
+void GL::UploadCubemapTexture(const char* Filename, int face, int ImageFlags, int* WidthOut, int* HeightOut)
+{
+	// Flip
+	stbi_set_flip_vertically_on_load((ImageFlags & IMG_FLIP) ? 1 : 0);
+
+	// Desired channels
+	int DesiredChannels = 0;
+	int Channels = 0;
+	if (ImageFlags & IMG_FORCE_GREY)
+	{
+		DesiredChannels = STBI_grey;
+		Channels = 1;
+	}
+	if (ImageFlags & IMG_FORCE_GREY_ALPHA)
+	{
+		DesiredChannels = STBI_grey_alpha;
+		Channels = 2;
+	}
+	if (ImageFlags & IMG_FORCE_RGB)
+	{
+		DesiredChannels = STBI_rgb;
+		Channels = 3;
+	}
+	if (ImageFlags & IMG_FORCE_RGBA)
+	{
+		DesiredChannels = STBI_rgb_alpha;
+		Channels = 4;
+	}
+
+	// Loading
+	int Width, Height;
+	uint8_t* Image = stbi_load(Filename, &Width, &Height, (DesiredChannels == 0) ? &Channels : nullptr, DesiredChannels);
+	if (Image == nullptr)
+	{
+		fprintf(stderr, "[ERROR] Image loading failed on '%s'\n", Filename);
+		return;
+	}
+
+	GLint GLImageFormat[] =	{
+		-1, // 0 Channels, unused
+		GL_RED,
+		GL_RG,
+		GL_RGB,
+		GL_RGBA
+	};
+
+	// Uploading
+	glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GLImageFormat[Channels], Width, Height, 0, GLImageFormat[Channels], GL_UNSIGNED_BYTE, Image);
+	stbi_image_free(Image);
+
+	// Mipmaps
+	if (ImageFlags & IMG_GEN_MIPMAPS)
+		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
+	if (WidthOut)
+		*WidthOut = Width;
+
+	if (HeightOut)
+		*HeightOut = Height;
+
+	stbi_set_flip_vertically_on_load(0); // Always reset to default value
 }
 
 void GL::UploadCheckerboardTexture(int Width, int Height, int SquareSize)
