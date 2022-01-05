@@ -5,9 +5,9 @@
 
 #include "color.h"
 
-#include "tavern_scene.h"
+#include "npr_scene.h"
 
-tavern_scene::tavern_scene(GL::cache& GLCache)
+npr_scene::npr_scene(GL::cache& GLCache)
 {
     // Init lights
     {
@@ -16,11 +16,11 @@ tavern_scene::tavern_scene(GL::cache& GLCache)
 
         // (Default light, standard values)
         GL::light DefaultLight = {};
-        DefaultLight.Enabled     = true;
-        DefaultLight.Position    = { 0.0f, 0.0f, 0.0f, 1.f };
-        DefaultLight.Ambient     = { 0.2f, 0.2f, 0.2f };
-        DefaultLight.Diffuse     = { 1.0f, 1.0f, 1.0f };
-        DefaultLight.Specular    = { 0.0f, 0.0f, 0.0f };
+        DefaultLight.Enabled = true;
+        DefaultLight.Position = { 0.0f, 0.0f, 0.0f, 1.f };
+        DefaultLight.Ambient = { 0.2f, 0.2f, 0.2f };
+        DefaultLight.Diffuse = { 1.0f, 1.0f, 1.0f };
+        DefaultLight.Specular = { 0.0f, 0.0f, 0.0f };
         DefaultLight.Attenuation = { 1.0f, 0.0f, 0.0f };
 
         // Sun light
@@ -40,16 +40,16 @@ tavern_scene::tavern_scene(GL::cache& GLCache)
         this->Lights[1].Position = { -3.214370f,-0.162299f, 5.547660f, 1.f }; // Candle 1
         this->Lights[2].Position = { -4.721620f,-0.162299f, 2.590890f, 1.f }; // Candle 2
         this->Lights[3].Position = { -2.661010f,-0.162299f, 0.235029f, 1.f }; // Candle 3
-        this->Lights[4].Position = {  0.012123f, 0.352532f,-2.302700f, 1.f }; // Candle 4
-        this->Lights[5].Position = {  3.030360f, 0.352532f,-1.644170f, 1.f }; // Candle 5
+        this->Lights[4].Position = { 0.012123f, 0.352532f,-2.302700f, 1.f }; // Candle 4
+        this->Lights[5].Position = { 3.030360f, 0.352532f,-1.644170f, 1.f }; // Candle 5
 
     }
 
     // Create mesh
     {
         // Use vbo from GLCache
-        MeshBuffer = GLCache.LoadObj("media/fantasy_game_inn.obj", 1.f, &this->MeshVertexCount);
-        
+        MeshBuffer = GLCache.LoadObj("media/T-Rex/T-Rex.obj", 1.f, &this->MeshVertexCount);
+
         MeshDesc.Stride = sizeof(vertex_full);
         MeshDesc.HasNormal = true;
         MeshDesc.HasUV = true;
@@ -60,10 +60,10 @@ tavern_scene::tavern_scene(GL::cache& GLCache)
 
     // Gen texture
     {
-        DiffuseTexture  = GLCache.LoadTexture("media/fantasy_game_inn_diffuse.png", IMG_FLIP | IMG_GEN_MIPMAPS);
+        DiffuseTexture = GLCache.LoadTexture("media/fantasy_game_inn_diffuse.png", IMG_FLIP | IMG_GEN_MIPMAPS);
         EmissiveTexture = GLCache.LoadTexture("media/fantasy_game_inn_emissive.png", IMG_FLIP | IMG_GEN_MIPMAPS);
     }
-    
+
     // Gen light uniform buffer
     {
         glGenBuffers(1, &LightsUniformBuffer);
@@ -72,7 +72,7 @@ tavern_scene::tavern_scene(GL::cache& GLCache)
     }
 }
 
-tavern_scene::~tavern_scene()
+npr_scene::~npr_scene()
 {
     glDeleteBuffers(1, &LightsUniformBuffer);
     //glDeleteTextures(1, &Texture);   // From cache
@@ -82,18 +82,18 @@ tavern_scene::~tavern_scene()
 static bool EditLight(GL::light* Light)
 {
     bool Result =
-          ImGui::Checkbox("Enabled", (bool*)&Light->Enabled)
+        ImGui::Checkbox("Enabled", (bool*)&Light->Enabled)
         + ImGui::SliderFloat4("Position", Light->Position.e, -4.f, 4.f)
         + ImGui::ColorEdit3("Ambient", Light->Ambient.e)
         + ImGui::ColorEdit3("Diffuse", Light->Diffuse.e)
         + ImGui::ColorEdit3("Specular", Light->Specular.e)
-        + ImGui::SliderFloat("Attenuation (constant)",  &Light->Attenuation.e[0], 0.f, 10.f)
-        + ImGui::SliderFloat("Attenuation (linear)",    &Light->Attenuation.e[1], 0.f, 10.f)
+        + ImGui::SliderFloat("Attenuation (constant)", &Light->Attenuation.e[0], 0.f, 10.f)
+        + ImGui::SliderFloat("Attenuation (linear)", &Light->Attenuation.e[1], 0.f, 10.f)
         + ImGui::SliderFloat("Attenuation (quadratic)", &Light->Attenuation.e[2], 0.f, 10.f);
     return Result;
 }
 
-void tavern_scene::InspectLights()
+void npr_scene::InspectLights()
 {
     if (ImGui::TreeNodeEx("Lights"))
     {
