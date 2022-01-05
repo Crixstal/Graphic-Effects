@@ -17,6 +17,7 @@
 struct vertex
 {
     v3 Position;
+    v3 Normal;
     v2 UV;
 };
 
@@ -25,7 +26,8 @@ struct vertex
 static const char* gVertexShaderStr = R"GLSL(
 // Attributes
 layout(location = 0) in vec3 aPosition;
-layout(location = 1) in vec2 aUV;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aUV;
 
 // Uniforms
 uniform mat4 uModelViewProj;
@@ -77,14 +79,56 @@ static const char* sbFragmentShaderStr = R"GLSL(
 in vec3 vUV;
 
 // Uniforms
-uniform samplerCube skybox;
+uniform samplerCube uSkybox;
 
 // Shader outputs
 out vec4 oColor;
 
 void main()
 {
-    oColor = texture(skybox, vUV);
+    oColor = texture(uSkybox, vUV);
+})GLSL";
+#pragma endregion
+#pragma region REFLECTION SHADER
+static const char* rfxVertexShaderStr = R"GLSL(
+// Attributes
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aUV;
+
+// Uniforms
+uniform mat4 uModel;
+uniform mat4 uViewProj;
+
+// Varyings (variables that are passed to fragment shader with perspective interpolation)
+out vec3 vNormal;
+out vec3 vPos;
+
+void main()
+{
+    vNormal = mat3(transpose(inverse(uModel))) * aNormal;
+    vPos = vec3(uModel * vec4(aPosition, 1.0));
+    gl_Position = uViewProj * vec4(vPos, 1.0);
+})GLSL";
+
+static const char* rfxFragmentShaderStr = R"GLSL(
+// Varyings
+in vec3 vNormal;
+in vec3 vPos;
+
+// Uniforms
+uniform vec3 uCamPos;
+uniform samplerCube uSkybox;
+
+// Shader outputs
+out vec4 oColor;
+
+void main()
+{
+    vec3 viewVec = normalize(vPos - uCamPos);
+    vec3 reflectVec = reflect(viewVec, normalize(vNormal));
+    //reflectVec.z = -reflectVec.z;
+    oColor = texture(uSkybox, reflectVec);
 })GLSL";
 #pragma endregion
 #pragma endregion
@@ -95,21 +139,32 @@ static void DrawQuad(GLuint Program, mat4 ModelViewProj)
     glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
+static void DrawQuad(GLuint Program, mat4 Model, mat4 ViewProj)
+{
+    glUniformMatrix4fv(glGetUniformLocation(Program, "uModel"), 1, GL_FALSE, Model.e);
+    glUniformMatrix4fv(glGetUniformLocation(Program, "uViewProj"), 1, GL_FALSE, ViewProj.e);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
 #pragma region CONSTRUCTOR/DESTRUCTOR
 demo_reflection::demo_reflection()
 {
     // Create render pipeline
     this->Program = GL::CreateProgram(gVertexShaderStr, gFragmentShaderStr);
     SBProgram = GL::CreateProgram(sbVertexShaderStr, sbFragmentShaderStr);
+    RFXProgram = GL::CreateProgram(rfxVertexShaderStr, rfxFragmentShaderStr);
+ 
+    // Create a descriptor based on the `struct vertex` format
+    vertex_descriptor Descriptor = {};
+    Descriptor.Stride = sizeof(vertex);
+    Descriptor.HasNormal = true;
+    Descriptor.HasUV = true;
+    Descriptor.PositionOffset = OFFSETOF(vertex, Position);
+    Descriptor.NormalOffset = OFFSETOF(vertex, Normal);
+    Descriptor.UVOffset = OFFSETOF(vertex, UV);
+
     // Gen mesh
     {
-        // Create a descriptor based on the `struct vertex` format
-        vertex_descriptor Descriptor = {};
-        Descriptor.Stride = sizeof(vertex);
-        Descriptor.HasUV = true;
-        Descriptor.PositionOffset = OFFSETOF(vertex, Position);
-        Descriptor.UVOffset = OFFSETOF(vertex, UV);
-
         // Create a quad in RAM
         vertex Quad[6];
         this->VertexCount = 6;
@@ -119,17 +174,21 @@ demo_reflection::demo_reflection()
         glGenBuffers(1, &this->VertexBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, this->VertexBuffer);
         glBufferData(GL_ARRAY_BUFFER, this->VertexCount * sizeof(vertex), Quad, GL_STATIC_DRAW);
+    
+        // Create quad vertex array
+        glGenVertexArrays(1, &VAO);
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, this->VertexBuffer);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, Position));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, Normal));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, UV));
     }
 
     // Gen cube
     {
-        // Create a descriptor based on the `struct vertex` format
-        vertex_descriptor Descriptor = {};
-        Descriptor.Stride = sizeof(vertex);
-        Descriptor.HasUV = true;
-        Descriptor.PositionOffset = OFFSETOF(vertex, Position);
-        Descriptor.UVOffset = OFFSETOF(vertex, UV);
-
         // Create a cube in RAM
         vertex Cube[36];
         cubeVertexCount = 36;
@@ -139,6 +198,17 @@ demo_reflection::demo_reflection()
         glGenBuffers(1, &cubeVertexBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, cubeVertexBuffer);
         glBufferData(GL_ARRAY_BUFFER, cubeVertexCount * sizeof(vertex), Cube, GL_STATIC_DRAW);
+    
+        // Create cube vertex array
+        glGenVertexArrays(1, &cubeVAO);
+        glBindVertexArray(cubeVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, this->cubeVertexBuffer);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, Position));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, Normal));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, UV));
     }
 
     // Gen texture
@@ -146,6 +216,15 @@ demo_reflection::demo_reflection()
         glGenTextures(1, &Texture);
         glBindTexture(GL_TEXTURE_2D, Texture);
         GL::UploadCheckerboardTexture(64, 64, 8);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
+
+    // Gen custom texture
+    {
+        glGenTextures(1, &textureCamille);
+        glBindTexture(GL_TEXTURE_2D, textureCamille);
+        GL::UploadTexture("media/roh.png", image_flags::IMG_FLIP, &texWidth, &texHeight);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     }
@@ -172,22 +251,6 @@ demo_reflection::demo_reflection()
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     }
-
-    // Create quad vertex array
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, this->VertexBuffer);
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, Position));
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, UV));
-
-    // Create cube vertex array
-    glGenVertexArrays(1, &cubeVAO);
-    glBindVertexArray(cubeVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, this->cubeVertexBuffer);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, Position));
 }
 
 demo_reflection::~demo_reflection()
@@ -223,20 +286,32 @@ void demo_reflection::Update(const platform_io& IO)
     PG::DebugRenderer()->DrawAxisGizmo(Mat4::Translate({ 0.f, 0.f, 0.f }), true, true);
     
     // Use shader and send data
-    glUseProgram(Program);
-    glUniform1f(glGetUniformLocation(Program, "uTime"), (float)IO.Time);
+    glUseProgram(RFXProgram);
+    glUniform1f(glGetUniformLocation(RFXProgram, "uTime"), (float)IO.Time);
+    glUniform3fv(glGetUniformLocation(RFXProgram, "uCamPos"), 1, Camera.Position.e);
 
-    glBindTexture(GL_TEXTURE_2D, Texture);
-    glBindVertexArray(VAO);
+    glBindTexture(GL_TEXTURE_2D, textureCamille);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox);
+
 
     // Double faced quad
-    v3 ObjectPosition = { 0.f, 0.f, -3.f };
     {
+        glBindVertexArray(VAO);
+        v3 ObjectPosition = { 0.f, 0.f, -3.f };
+        
         mat4 ModelMatrix = Mat4::Translate(ObjectPosition);
-        DrawQuad(Program, ProjectionMatrix * ViewMatrix * ModelMatrix);
+        ModelMatrix = ModelMatrix * Mat4::RotateY(IO.Time * timeScale);
 
-        ModelMatrix = ModelMatrix * Mat4::RotateY(-1.f, 0.f);
-        DrawQuad(Program, ProjectionMatrix * ViewMatrix * ModelMatrix);
+        DrawQuad(RFXProgram, ModelMatrix, ProjectionMatrix * ViewMatrix);
+
+        ModelMatrix = ModelMatrix * Mat4::RotateY(Math::Pi());
+        DrawQuad(RFXProgram, ModelMatrix, ProjectionMatrix * ViewMatrix);
+
+        ModelMatrix = Mat4::Identity() * Mat4::RotateY(Math::HalfPi()) * Mat4::Translate({ 0.f, 0.f, -3.f });
+        DrawQuad(RFXProgram, ModelMatrix, ProjectionMatrix * ViewMatrix);
+
+        ModelMatrix = Mat4::Identity() * Mat4::RotateX(Math::HalfPi()) * Mat4::Translate({ 0.f, 0.f, -3.f });
+        DrawQuad(RFXProgram, ModelMatrix, ProjectionMatrix * ViewMatrix);
     }
 
     mat4 rotateOnlyViewMatrix = ViewMatrix;
@@ -258,7 +333,7 @@ void demo_reflection::Update(const platform_io& IO)
 
 void demo_reflection::DisplayDebugUI()
 {
-    if (ImGui::TreeNodeEx("demo_reflection", ImGuiTreeNodeFlags_Framed))
+    if (ImGui::TreeNodeEx("demo_skybox", ImGuiTreeNodeFlags_Framed))
     {
         // Debug display
         if (ImGui::TreeNodeEx("Camera"))
@@ -284,6 +359,19 @@ void demo_reflection::DisplayDebugUI()
             ImGui::TreePop();
         }
 
+        ImGui::TreePop();
+    }
+    if (ImGui::TreeNodeEx("demo_reflection", ImGuiTreeNodeFlags_Framed))
+    {
+        ImGui::Checkbox("Show debug texture", &showDebugTextures);
+        if (showDebugTextures)
+        {
+            ImGui::Image((void*)(intptr_t)Texture, ImVec2(128, 128));
+            ImGui::SameLine();
+            ImGui::Image((void*)(intptr_t)textureCamille, ImVec2(128, 128));
+            //ImGui::Image((void*)(intptr_t)skybox, ImVec2(128, 128));
+        }
+        
         ImGui::TreePop();
     }
 }

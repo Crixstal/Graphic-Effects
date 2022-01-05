@@ -20,16 +20,21 @@ private:
     // Shader programs
     GLuint Program = 0; // Base
     GLuint SBProgram = 0;
+    GLuint RFXProgram = 0; // Reflection shader
 
     // Textures/cubemaps
     GLuint Texture = 0;
+    GLuint textureCamille = 0;
     GLuint skybox = 0;
+    GLuint reflectionCubemap = 0;
 
     // Meshes
+    // Quad
     GLuint VAO = 0;
     GLuint VertexBuffer = 0;
     int VertexCount = 0;
 
+    // Cube
     GLuint cubeVAO = 0;
     GLuint cubeVertexBuffer = 0;
     int cubeVertexCount = 0;
@@ -37,5 +42,8 @@ private:
     int texWidth = 0;
     int texHeight = 0;
 
-    bool showDebugMatrix = false;
+    bool showDebugTextures = false;
+
+    // Misc
+    float timeScale = 0.75f;
 };
