@@ -127,7 +127,33 @@ void main()
 {
     vec3 viewVec = normalize(vPos - uCamPos);
     vec3 reflectVec = reflect(viewVec, normalize(vNormal));
-    //reflectVec.z = -reflectVec.z;
+    reflectVec.z = -reflectVec.z;
+    oColor = texture(uSkybox, reflectVec);
+})GLSL";
+#pragma endregion
+#pragma region REFRACTION SHADER
+// Vertex shader is the same as reflection shader, avoiding copy
+static const char* rfrFragmentShaderStr = R"GLSL(
+// Varyings
+in vec3 vNormal;
+in vec3 vPos;
+
+// Uniforms
+uniform vec3 uCamPos;
+uniform samplerCube uSkybox;
+
+// Shader outputs
+out vec4 oColor;
+
+void main()
+{
+    // Common refraction indexes
+    //Air = 1.00, Water = 1.33, Ice = 1.309, Glass = 1.52, Diamond = 2.42
+    
+    float rfrRatio = 1.0 / 1.52;
+    vec3 viewVec = normalize(vPos - uCamPos);
+    vec3 reflectVec = refract(viewVec, normalize(vNormal), rfrRatio);
+    reflectVec.z = -reflectVec.z;
     oColor = texture(uSkybox, reflectVec);
 })GLSL";
 #pragma endregion
@@ -153,6 +179,7 @@ demo_reflection::demo_reflection()
     this->Program = GL::CreateProgram(gVertexShaderStr, gFragmentShaderStr);
     SBProgram = GL::CreateProgram(sbVertexShaderStr, sbFragmentShaderStr);
     RFXProgram = GL::CreateProgram(rfxVertexShaderStr, rfxFragmentShaderStr);
+    RFRProgram = GL::CreateProgram(rfxVertexShaderStr, rfrFragmentShaderStr);
  
     // Create a descriptor based on the `struct vertex` format
     vertex_descriptor Descriptor = {};
@@ -284,20 +311,27 @@ void demo_reflection::Update(const platform_io& IO)
     
     // Draw origin
     PG::DebugRenderer()->DrawAxisGizmo(Mat4::Translate({ 0.f, 0.f, 0.f }), true, true);
-    
-    // Use shader and send data
-    glUseProgram(RFXProgram);
-    glUniform1f(glGetUniformLocation(RFXProgram, "uTime"), (float)IO.Time);
-    glUniform3fv(glGetUniformLocation(RFXProgram, "uCamPos"), 1, Camera.Position.e);
 
     glBindTexture(GL_TEXTURE_2D, textureCamille);
     glBindTexture(GL_TEXTURE_CUBE_MAP, skybox);
 
-
-    // Double faced quad
+    // Use shader and send data
+    if (showRefraction)
     {
-        glBindVertexArray(VAO);
+        glUseProgram(RFRProgram);
+        glUniform1f(glGetUniformLocation(RFRProgram, "uTime"), (float)IO.Time);
+        glUniform3fv(glGetUniformLocation(RFRProgram, "uCamPos"), 1, Camera.Position.e);
+    }
+    else
+    {
+        glUseProgram(RFXProgram);
+        glUniform1f(glGetUniformLocation(RFXProgram, "uTime"), (float)IO.Time);
+        glUniform3fv(glGetUniformLocation(RFXProgram, "uCamPos"), 1, Camera.Position.e);
+    }
+
+    {
         v3 ObjectPosition = { 0.f, 0.f, -3.f };
+        glBindVertexArray(VAO);
         
         mat4 ModelMatrix = Mat4::Translate(ObjectPosition);
         ModelMatrix = ModelMatrix * Mat4::RotateY(IO.Time * timeScale);
@@ -314,6 +348,7 @@ void demo_reflection::Update(const platform_io& IO)
         DrawQuad(RFXProgram, ModelMatrix, ProjectionMatrix * ViewMatrix);
     }
 
+    // Skybox
     mat4 rotateOnlyViewMatrix = ViewMatrix;
     // Sets translation to 0
     rotateOnlyViewMatrix.c[3].x = 0;
@@ -363,6 +398,8 @@ void demo_reflection::DisplayDebugUI()
     }
     if (ImGui::TreeNodeEx("demo_reflection", ImGuiTreeNodeFlags_Framed))
     {
+        ImGui::Checkbox("Show refraction", &showRefraction);
+
         ImGui::Checkbox("Show debug texture", &showDebugTextures);
         if (showDebugTextures)
         {

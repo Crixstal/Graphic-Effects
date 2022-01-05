@@ -21,7 +21,6 @@
 #include "pg.h"
 
 #include "demo_base.h"
-#include "demo_perso.h"
 #include "demo_skybox.h"
 #include "demo_reflection.h"
 #include "demo_minimal.h"

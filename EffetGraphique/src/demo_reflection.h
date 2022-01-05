@@ -21,6 +21,7 @@ private:
     GLuint Program = 0; // Base
     GLuint SBProgram = 0;
     GLuint RFXProgram = 0; // Reflection shader
+    GLuint RFRProgram = 0; // Refraction shader
 
     // Textures/cubemaps
     GLuint Texture = 0;
@@ -46,4 +47,5 @@ private:
 
     // Misc
     float timeScale = 0.75f;
+    bool showRefraction = false;
 };
