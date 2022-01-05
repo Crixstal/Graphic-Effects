@@ -8,7 +8,7 @@
 #include "mesh.h"
 #include "color.h"
 
-#include "demo_skybox.h"
+#include "demo_reflection.h"
 
 #include "pg.h"
 
@@ -96,7 +96,7 @@ static void DrawQuad(GLuint Program, mat4 ModelViewProj)
 }
 
 #pragma region CONSTRUCTOR/DESTRUCTOR
-demo_skybox::demo_skybox()
+demo_reflection::demo_reflection()
 {
     // Create render pipeline
     this->Program = GL::CreateProgram(gVertexShaderStr, gFragmentShaderStr);
@@ -190,7 +190,7 @@ demo_skybox::demo_skybox()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, Position));
 }
 
-demo_skybox::~demo_skybox()
+demo_reflection::~demo_reflection()
 {
     // Cleanup GL
     glDeleteTextures(1, &Texture);
@@ -202,7 +202,7 @@ demo_skybox::~demo_skybox()
 }
 #pragma endregion
 
-void demo_skybox::Update(const platform_io& IO)
+void demo_reflection::Update(const platform_io& IO)
 {
     Camera = CameraUpdateFreefly(Camera, IO.CameraInputs);
 
@@ -233,8 +233,8 @@ void demo_skybox::Update(const platform_io& IO)
     v3 ObjectPosition = { 0.f, 0.f, -3.f };
     {
         mat4 ModelMatrix = Mat4::Translate(ObjectPosition);
-        debugMatrix = ModelMatrix;
         DrawQuad(Program, ProjectionMatrix * ViewMatrix * ModelMatrix);
+
         ModelMatrix = ModelMatrix * Mat4::RotateY(-1.f, 0.f);
         DrawQuad(Program, ProjectionMatrix * ViewMatrix * ModelMatrix);
     }
@@ -256,9 +256,9 @@ void demo_skybox::Update(const platform_io& IO)
     DisplayDebugUI();
 }
 
-void demo_skybox::DisplayDebugUI()
+void demo_reflection::DisplayDebugUI()
 {
-    if (ImGui::TreeNodeEx("demo_skybox", ImGuiTreeNodeFlags_Framed))
+    if (ImGui::TreeNodeEx("demo_reflection", ImGuiTreeNodeFlags_Framed))
     {
         // Debug display
         if (ImGui::TreeNodeEx("Camera"))
@@ -284,12 +284,6 @@ void demo_skybox::DisplayDebugUI()
             ImGui::TreePop();
         }
 
-        ImGui::Checkbox("Show debug matrix", &showDebugMatrix);
-        if (showDebugMatrix)
-        {
-            for (int i = 0; i < 4; i++)
-                ImGui::Text("%.2f, %.2f, %.2f, %.2f", debugMatrix.c[i].x, debugMatrix.c[i].y, debugMatrix.c[i].z, debugMatrix.c[i].w);
-        }
         ImGui::TreePop();
     }
 }
