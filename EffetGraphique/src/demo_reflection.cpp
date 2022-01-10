@@ -12,6 +12,10 @@
 
 #include "pg.h"
 
+#define REFLECTION_RES_WIDTH 1440
+#define REFLECTION_RES_HEIGHT 900
+#define REFLECTION_FAR_PLANE 50.f
+
 // Vertex format
 // ==================================================
 struct vertex
@@ -181,6 +185,29 @@ demo_reflection::demo_reflection()
     RFXProgram = GL::CreateProgram(rfxVertexShaderStr, rfxFragmentShaderStr);
     RFRProgram = GL::CreateProgram(rfxVertexShaderStr, rfrFragmentShaderStr);
  
+    // Framebuffer/texture used to generate reflection/refraction cubemaps
+    for (int i = 0; i < 6; i++)
+    {
+        // Framebuffer
+        glGenFramebuffers(1, &reflectionFramebuffers[i]);
+        glBindFramebuffer(GL_FRAMEBUFFER, reflectionFramebuffers[i]);
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LEQUAL);
+        glEnable(GL_CULL_FACE);
+        // Texture
+        glGenTextures(1, &reflectionTextures[i]);
+        glBindTexture(GL_TEXTURE_2D, reflectionTextures[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, REFLECTION_RES_WIDTH, REFLECTION_RES_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        // Attach texture to framebuffer
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, reflectionTextures[i], 0);
+    }
+
+    glGenTextures(1, &reflectionCubemap);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, reflectionCubemap);
+
     // Create a descriptor based on the `struct vertex` format
     vertex_descriptor Descriptor = {};
     Descriptor.Stride = sizeof(vertex);
@@ -238,6 +265,32 @@ demo_reflection::demo_reflection()
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, UV));
     }
 
+    // Gen sphere
+    {
+        const int lon = 25;
+        const int lat = 25;
+        // Create a sphere in RAM
+        vertex Sphere[lon * lat * 6];
+        sphereVertexCount = lon * lat * 6;
+        Mesh::BuildSphere(Sphere, Sphere + sphereVertexCount, Descriptor, lon, lat);
+
+        // Upload sphere to gpu (VRAM)
+        glGenBuffers(1, &sphereVertexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, sphereVertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sphereVertexCount * sizeof(vertex), Sphere, GL_STATIC_DRAW);
+
+        // Create sphere vertex array
+        glGenVertexArrays(1, &sphereVAO);
+        glBindVertexArray(sphereVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, this->sphereVertexBuffer);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, Position));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, Normal));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, UV));
+    }
+
     // Gen texture
     {
         glGenTextures(1, &Texture);
@@ -249,8 +302,8 @@ demo_reflection::demo_reflection()
 
     // Gen custom texture
     {
-        glGenTextures(1, &textureCamille);
-        glBindTexture(GL_TEXTURE_2D, textureCamille);
+        glGenTextures(1, &customTexture);
+        glBindTexture(GL_TEXTURE_2D, customTexture);
         GL::UploadTexture("media/roh.png", image_flags::IMG_FLIP, &texWidth, &texHeight);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -296,10 +349,8 @@ void demo_reflection::Update(const platform_io& IO)
 {
     Camera = CameraUpdateFreefly(Camera, IO.CameraInputs);
 
-    // Compute model-view-proj and send it to shader
-    mat4 ProjectionMatrix = Mat4::Perspective(Math::ToRadians(60.f), (float)IO.WindowWidth / (float)IO.WindowHeight, 0.1f, 100.f);
-    mat4 ViewMatrix = CameraGetInverseMatrix(Camera);
-    
+    // Bind main buffer
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     // Setup GL state
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
@@ -309,61 +360,104 @@ void demo_reflection::Update(const platform_io& IO)
     glClearColor(0.2f, 0.2f, 0.2f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
+    Render(IO, true);
+
+    // ImGui
+    DisplayDebugUI();
+}
+
+void demo_reflection::Render(const platform_io& IO, bool renderMirrorEffects, camera* customCamera, mat4* projMat)
+{
+    camera renderCamera = {};
+    if (customCamera == nullptr)
+        renderCamera = Camera;
+    else
+        renderCamera = *customCamera;
+
+    // Compute model-view-proj and send it to shader
+    mat4 ProjectionMatrix;
+    if (projMat == nullptr)
+        ProjectionMatrix = Mat4::Perspective(Math::ToRadians(60.f), (float)IO.WindowWidth / (float)IO.WindowHeight, 0.1f, 100.f);
+    else
+        ProjectionMatrix = *projMat;
+    mat4 ViewMatrix = CameraGetInverseMatrix(renderCamera);
+
     // Draw origin
     PG::DebugRenderer()->DrawAxisGizmo(Mat4::Translate({ 0.f, 0.f, 0.f }), true, true);
 
-    glBindTexture(GL_TEXTURE_2D, textureCamille);
+    glBindTexture(GL_TEXTURE_2D, customTexture);
+
+    // Sphere
+    {
+        glUseProgram(Program);
+        mat4 ModelMatrix = Mat4::Translate({ 0.f, -1.f * sinf(IO.Time), -1.f });
+        mat4 mvp = ProjectionMatrix * ViewMatrix * ModelMatrix;
+        glUniformMatrix4fv(glGetUniformLocation(Program, "uModelViewProj"), 1, GL_FALSE, mvp.e);
+        glBindVertexArray(sphereVAO);
+        glDrawArrays(GL_TRIANGLES, 0, sphereVertexCount);
+    }
+
     glBindTexture(GL_TEXTURE_CUBE_MAP, skybox);
 
-    // Use shader and send data
+    // Use reflection/refraction shader and send data
     if (showRefraction)
     {
         glUseProgram(RFRProgram);
         glUniform1f(glGetUniformLocation(RFRProgram, "uTime"), (float)IO.Time);
-        glUniform3fv(glGetUniformLocation(RFRProgram, "uCamPos"), 1, Camera.Position.e);
+        glUniform3fv(glGetUniformLocation(RFRProgram, "uCamPos"), 1, renderCamera.Position.e);
     }
     else
     {
         glUseProgram(RFXProgram);
         glUniform1f(glGetUniformLocation(RFXProgram, "uTime"), (float)IO.Time);
-        glUniform3fv(glGetUniformLocation(RFXProgram, "uCamPos"), 1, Camera.Position.e);
+        glUniform3fv(glGetUniformLocation(RFXProgram, "uCamPos"), 1, renderCamera.Position.e);
     }
 
+    // Mirrors
+    if (renderMirrorEffects)
     {
+        glBindVertexArray(VAO); // Bind quad mesh
         v3 ObjectPosition = { 0.f, 0.f, -3.f };
-        glBindVertexArray(VAO);
-        
+
+        CreateCubemapFromPos(ObjectPosition, IO);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, reflectionCubemap);
+
         mat4 ModelMatrix = Mat4::Translate(ObjectPosition);
         ModelMatrix = ModelMatrix * Mat4::RotateY(IO.Time * timeScale);
 
-        DrawQuad(RFXProgram, ModelMatrix, ProjectionMatrix * ViewMatrix);
+        DrawQuad(showRefraction ? RFRProgram : RFXProgram, ModelMatrix, ProjectionMatrix * ViewMatrix);
 
         ModelMatrix = ModelMatrix * Mat4::RotateY(Math::Pi());
-        DrawQuad(RFXProgram, ModelMatrix, ProjectionMatrix * ViewMatrix);
+        DrawQuad(showRefraction ? RFRProgram : RFXProgram, ModelMatrix, ProjectionMatrix * ViewMatrix);
 
+        //CreateCubemapFromPos(ObjectPosition, IO);
+        //glBindTexture(GL_TEXTURE_CUBE_MAP, reflectionCubemap);
         ModelMatrix = Mat4::Identity() * Mat4::RotateY(Math::HalfPi()) * Mat4::Translate({ 0.f, 0.f, -3.f });
-        DrawQuad(RFXProgram, ModelMatrix, ProjectionMatrix * ViewMatrix);
+        DrawQuad(showRefraction ? RFRProgram : RFXProgram, ModelMatrix, ProjectionMatrix * ViewMatrix);
 
+        //CreateCubemapFromPos(ObjectPosition, IO);
+        //glBindTexture(GL_TEXTURE_CUBE_MAP, reflectionCubemap);
         ModelMatrix = Mat4::Identity() * Mat4::RotateX(Math::HalfPi()) * Mat4::Translate({ 0.f, 0.f, -3.f });
-        DrawQuad(RFXProgram, ModelMatrix, ProjectionMatrix * ViewMatrix);
+        DrawQuad(showRefraction ? RFRProgram : RFXProgram, ModelMatrix, ProjectionMatrix * ViewMatrix);
     }
 
     // Skybox
-    mat4 rotateOnlyViewMatrix = ViewMatrix;
-    // Sets translation to 0
-    rotateOnlyViewMatrix.c[3].x = 0;
-    rotateOnlyViewMatrix.c[3].y = 0;
-    rotateOnlyViewMatrix.c[3].z = 0;
-    mat4 vp = ProjectionMatrix * rotateOnlyViewMatrix;
-    glDepthMask(GL_FALSE);
-    glUseProgram(SBProgram);
-    glUniformMatrix4fv(glGetUniformLocation(SBProgram, "uViewProj"), 1, GL_FALSE, vp.e);
-    glBindVertexArray(cubeVAO);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
-    glDepthMask(GL_TRUE);
-
-    DisplayDebugUI();
+    {
+        mat4 rotateOnlyViewMatrix = ViewMatrix;
+        // Sets translation to 0
+        rotateOnlyViewMatrix.c[3].x = 0;
+        rotateOnlyViewMatrix.c[3].y = 0;
+        rotateOnlyViewMatrix.c[3].z = 0;
+        mat4 vp = ProjectionMatrix * rotateOnlyViewMatrix;
+        glDepthMask(GL_FALSE);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skybox);
+        glUseProgram(SBProgram);
+        glUniformMatrix4fv(glGetUniformLocation(SBProgram, "uViewProj"), 1, GL_FALSE, vp.e);
+        glBindVertexArray(cubeVAO);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skybox);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glDepthMask(GL_TRUE);
+    }
 }
 
 void demo_reflection::DisplayDebugUI()
@@ -400,15 +494,84 @@ void demo_reflection::DisplayDebugUI()
     {
         ImGui::Checkbox("Show refraction", &showRefraction);
 
+        if (ImGui::TreeNodeEx("Show last reflection cubemap"))
+        {
+            ImGui::Image((void*)(intptr_t)Texture, ImVec2(96, 96));
+            ImGui::SameLine();
+            ImGui::Image((void*)(intptr_t)reflectionTextures[2], ImVec2(96, 96));
+            ImGui::SameLine();
+            ImGui::Image((void*)(intptr_t)Texture, ImVec2(96, 96));
+            ImGui::SameLine();
+            ImGui::Image((void*)(intptr_t)Texture, ImVec2(96, 96));
+            
+            ImGui::Image((void*)(intptr_t)reflectionTextures[0], ImVec2(96, 96));
+            ImGui::SameLine();
+            ImGui::Image((void*)(intptr_t)reflectionTextures[4], ImVec2(96, 96));
+            ImGui::SameLine();
+            ImGui::Image((void*)(intptr_t)reflectionTextures[1], ImVec2(96, 96));
+            ImGui::SameLine();
+            ImGui::Image((void*)(intptr_t)reflectionTextures[5], ImVec2(96, 96));
+
+            ImGui::Image((void*)(intptr_t)Texture, ImVec2(96, 96));
+            ImGui::SameLine();
+            ImGui::Image((void*)(intptr_t)reflectionTextures[3], ImVec2(96, 96));
+            ImGui::SameLine();
+            ImGui::Image((void*)(intptr_t)Texture, ImVec2(96, 96));
+            ImGui::SameLine();
+            ImGui::Image((void*)(intptr_t)Texture, ImVec2(96, 96));
+
+            ImGui::TreePop();
+        }
+
         ImGui::Checkbox("Show debug texture", &showDebugTextures);
         if (showDebugTextures)
         {
             ImGui::Image((void*)(intptr_t)Texture, ImVec2(128, 128));
             ImGui::SameLine();
-            ImGui::Image((void*)(intptr_t)textureCamille, ImVec2(128, 128));
+            ImGui::Image((void*)(intptr_t)customTexture, ImVec2(128, 128));
             //ImGui::Image((void*)(intptr_t)skybox, ImVec2(128, 128));
         }
         
         ImGui::TreePop();
     }
+}
+
+void demo_reflection::CreateCubemapFromPos(v3 camPos, const platform_io& IO)
+{
+    // Camera angles
+    camera tempCamera[6] = {
+        {camPos, Math::HalfPi(), 0}, // Right
+        {camPos,-Math::HalfPi(), 0}, // Left
+        {camPos, 0, Math::HalfPi()}, // Top
+        {camPos, 0,-Math::HalfPi()}, // Bottom
+        {camPos, Math::Pi(), 0},     // Back
+        {camPos, 0, 0},              // Front
+    };
+
+    mat4 ProjectionMatrix = Mat4::Perspective(Math::ToRadians(90.f), (float)REFLECTION_RES_WIDTH / (float)REFLECTION_RES_HEIGHT, 0.1f, REFLECTION_FAR_PLANE);
+    mat4 ViewMatrix = CameraGetInverseMatrix(tempCamera[0]);
+
+    glGenTextures(1, &reflectionCubemap);
+
+    for (int i = 0; i < 6; i++)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, reflectionFramebuffers[i]);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // we're not using the stencil buffer now
+        glEnable(GL_DEPTH_TEST);
+        Render(IO, false, &tempCamera[i], &ProjectionMatrix);
+        
+        // Set cubemap face
+        glBindTexture(GL_TEXTURE_CUBE_MAP, reflectionCubemap);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, REFLECTION_RES_WIDTH, REFLECTION_RES_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    }
+
+    // Texture filters
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    // Clamp UV Coords to [0;1], avoids white edges
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

@@ -13,7 +13,10 @@ public:
     virtual ~demo_reflection();
     virtual void Update(const platform_io& IO);
     void DisplayDebugUI();
+    void Render(const platform_io& IO, bool renderMirrorEffects, camera* customCamera = nullptr, mat4* projMat = nullptr);
 private:
+    void CreateCubemapFromPos(v3 camPos, const platform_io& IO);
+
     // 3d camera
     camera Camera = {};
     
@@ -25,9 +28,11 @@ private:
 
     // Textures/cubemaps
     GLuint Texture = 0;
-    GLuint textureCamille = 0;
+    GLuint customTexture = 0;
     GLuint skybox = 0;
     GLuint reflectionCubemap = 0;
+    GLuint reflectionFramebuffers[6] = {};
+    GLuint reflectionTextures[6] = {};
 
     // Meshes
     // Quad
@@ -39,6 +44,10 @@ private:
     GLuint cubeVAO = 0;
     GLuint cubeVertexBuffer = 0;
     int cubeVertexCount = 0;
+
+    GLuint sphereVAO = 0;
+    GLuint sphereVertexBuffer = 0;
+    int sphereVertexCount = 0;
 
     int texWidth = 0;
     int texHeight = 0;
