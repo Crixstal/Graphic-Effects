@@ -32,6 +32,7 @@ private:
     GLuint skybox = 0;
     GLuint reflectionCubemap = 0;
     GLuint reflectionFramebuffers[6] = {};
+    GLuint reflectionRenderBuffers[6] = {};
     GLuint reflectionTextures[6] = {};
 
     // Meshes
