@@ -50,9 +50,6 @@ in vec3 vNormal;
 uniform mat4 uProjection;
 uniform vec3 uViewPosition;
 
-uniform sampler2D uDiffuseTexture;
-uniform sampler2D uEmissiveTexture;
-
 // Uniform blocks
 layout(std140) uniform uLightBlock
 {
@@ -80,10 +77,10 @@ void main()
     // Compute phong shading
     light_shade_result lightResult = get_lights_shading();
     
-    vec3 diffuseColor  = gDefaultMaterial.diffuse * lightResult.diffuse * texture(uDiffuseTexture, vUV).rgb;
+    vec3 diffuseColor  = gDefaultMaterial.diffuse * lightResult.diffuse;
     vec3 ambientColor  = gDefaultMaterial.ambient * lightResult.ambient;
     vec3 specularColor = gDefaultMaterial.specular * lightResult.specular;
-    vec3 emissiveColor = gDefaultMaterial.emission + texture(uEmissiveTexture, vUV).rgb;
+    vec3 emissiveColor = gDefaultMaterial.emission;
     
     // Apply light color
     oColor = vec4((ambientColor + diffuseColor + specularColor + emissiveColor), 1.0);
@@ -107,8 +104,8 @@ demo_npr::demo_npr(GL::cache& GLCache, GL::debug& GLDebug)
 
     // Create a vertex array and bind attribs onto the vertex buffer
     {
-        glGenVertexArrays(1, &VAO);
-        glBindVertexArray(VAO);
+        glGenVertexArrays(1, &VAO_NPR);
+        glBindVertexArray(VAO_NPR);
 
         glBindBuffer(GL_ARRAY_BUFFER, NPRScene.MeshBuffer);
 
@@ -124,8 +121,8 @@ demo_npr::demo_npr(GL::cache& GLCache, GL::debug& GLDebug)
     // Set uniforms that won't change
     {
         glUseProgram(Program);
-        glUniform1i(glGetUniformLocation(Program, "uDiffuseTexture"), 0);
-        glUniform1i(glGetUniformLocation(Program, "uEmissiveTexture"), 1);
+        //glUniform1i(glGetUniformLocation(Program, "uDiffuseTexture"), 0);
+        //glUniform1i(glGetUniformLocation(Program, "uEmissiveTexture"), 1);
         glUniformBlockBinding(Program, glGetUniformBlockIndex(Program, "uLightBlock"), LIGHT_BLOCK_BINDING_POINT);
     }
 }
@@ -133,7 +130,7 @@ demo_npr::demo_npr(GL::cache& GLCache, GL::debug& GLDebug)
 demo_npr::~demo_npr()
 {
     // Cleanup GL
-    glDeleteVertexArrays(1, &VAO);
+    glDeleteVertexArrays(1, &VAO_NPR);
     glDeleteProgram(Program);
 }
 
@@ -150,17 +147,17 @@ void demo_npr::Update(const platform_io& IO)
 
     mat4 ProjectionMatrix = Mat4::Perspective(Math::ToRadians(60.f), AspectRatio, 0.1f, 100.f);
     mat4 ViewMatrix = CameraGetInverseMatrix(Camera);
-    mat4 ModelMatrix = Mat4::Translate({ 0.f, 0.f, 0.f });
+    mat4 ModelMatrix = Mat4::Scale({ 0.01f, 0.01f, 0.01f });
 
     // Render tavern
-    this->RenderTavern(ProjectionMatrix, ViewMatrix, ModelMatrix);
-
+    this->RenderNPRModel(ProjectionMatrix, ViewMatrix, ModelMatrix);
+    
     // Render tavern wireframe
-    if (Wireframe)
-    {
-        GLDebug.Wireframe.BindBuffer(NPRScene.MeshBuffer, NPRScene.MeshDesc.Stride, NPRScene.MeshDesc.PositionOffset, NPRScene.MeshVertexCount);
-        GLDebug.Wireframe.DrawArray(0, NPRScene.MeshVertexCount, ProjectionMatrix * ViewMatrix * ModelMatrix);
-    }
+   // if (Wireframe)
+   // {
+   //     GLDebug.Wireframe.BindBuffer(NPRScene.MeshBuffer, NPRScene.MeshDesc.Stride, NPRScene.MeshDesc.PositionOffset, NPRScene.MeshVertexCount);
+   //     GLDebug.Wireframe.DrawArray(0, NPRScene.MeshVertexCount, ProjectionMatrix * ViewMatrix * ModelMatrix);
+   // }
 
     // Display debug UI
     this->DisplayDebugUI();
@@ -185,7 +182,7 @@ void demo_npr::DisplayDebugUI()
     }
 }
 
-void demo_npr::RenderTavern(const mat4& ProjectionMatrix, const mat4& ViewMatrix, const mat4& ModelMatrix)
+void demo_npr::RenderNPRModel(const mat4& ProjectionMatrix, const mat4& ViewMatrix, const mat4& ModelMatrix)
 {
     glEnable(GL_DEPTH_TEST);
 
@@ -201,14 +198,14 @@ void demo_npr::RenderTavern(const mat4& ProjectionMatrix, const mat4& ViewMatrix
     glUniform3fv(glGetUniformLocation(Program, "uViewPosition"), 1, Camera.Position.e);
 
     // Bind uniform buffer and textures
-    glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_BLOCK_BINDING_POINT, NPRScene.LightsUniformBuffer);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, NPRScene.DiffuseTexture);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, NPRScene.EmissiveTexture);
-    glActiveTexture(GL_TEXTURE0); // Reset active texture just in case
+    //glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_BLOCK_BINDING_POINT, NPRScene.LightsUniformBuffer);
+    //glActiveTexture(GL_TEXTURE0);
+    //glBindTexture(GL_TEXTURE_2D, NPRScene.DiffuseTexture);
+    //glActiveTexture(GL_TEXTURE1);
+    //glBindTexture(GL_TEXTURE_2D, NPRScene.EmissiveTexture);
+    //glActiveTexture(GL_TEXTURE0); // Reset active texture just in case
 
     // Draw mesh
-    glBindVertexArray(VAO);
+    glBindVertexArray(VAO_NPR);
     glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
 }
