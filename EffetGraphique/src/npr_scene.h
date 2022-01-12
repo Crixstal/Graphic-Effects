@@ -17,7 +17,7 @@ public:
 
     // Lights buffer
     GLuint LightsUniformBuffer = 0;
-    int LightCount = 8;
+    int LightCount = 1;
 
     // Textures
     GLuint DiffuseTexture = 0;
@@ -28,5 +28,5 @@ public:
 
 private:
     // Lights data
-    std::vector<GL::light> Lights;
+    GL::light Light;
 };

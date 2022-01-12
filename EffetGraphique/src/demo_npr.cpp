@@ -60,7 +60,7 @@ uniform bool uIsOutline;
 // Uniform blocks
 layout(std140) uniform uLightBlock
 {
-	light uLight[LIGHT_COUNT];
+	light uLight;
 };
 
 // Shader outputs
@@ -97,7 +97,7 @@ void main()
         oColor = vec4(0.0, 0.0, 0.0, 1.0);
 
     else
-        oColor = gooch_shading(vec4(gDefaultMaterial.ambient, 1.0), gDefaultMaterial.shininess, uLight[0].position.xyz, vNormal, uViewPosition);
+        oColor = gooch_shading(vec4(gDefaultMaterial.ambient, 1.0), gDefaultMaterial.shininess, uLight.position.xyz, vNormal, uViewPosition);
 })GLSL";
 #pragma endregion
 
@@ -107,12 +107,8 @@ demo_npr::demo_npr(GL::cache& GLCache, GL::debug& GLDebug)
     // Create shader
     {
         // Assemble fragment shader strings (defines + code)
-        char FragmentShaderConfig[] = "#define LIGHT_COUNT %d\n";
-        snprintf(FragmentShaderConfig, ARRAY_SIZE(FragmentShaderConfig), "#define LIGHT_COUNT %d\n", NPRScene.LightCount);
-        const char* FragmentShaderStrs[2] = {
-            FragmentShaderConfig,
-            gFragmentShaderStr,
-        };
+        char FragmentShaderConfig[] = "";
+        const char* FragmentShaderStrs[2] = { FragmentShaderConfig, gFragmentShaderStr };
 
         this->Program = GL::CreateProgramEx(1, &gVertexShaderStr, 2, FragmentShaderStrs, true);
     }

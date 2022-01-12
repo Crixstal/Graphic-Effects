@@ -7,11 +7,8 @@
 
 npr_scene::npr_scene(GL::cache& GLCache)
 {
-    // Init lights
+    // Init light
     {
-        this->LightCount = 1;
-        this->Lights.resize(this->LightCount);
-
         // (Default light, standard values)
         GL::light DefaultLight = {};
         DefaultLight.Enabled = true;
@@ -22,9 +19,9 @@ npr_scene::npr_scene(GL::cache& GLCache)
         DefaultLight.Attenuation = { 1.0f, 0.0f, 0.0f };
 
         // Sun light
-        this->Lights[0] = DefaultLight;
-        this->Lights[0].Position = { 1.f, 3.f, 1.f, 0.f }; // Directional light
-        this->Lights[0].Diffuse = Color::RGB(0x374D58);
+        this->Light = DefaultLight;
+        this->Light.Position = { 1.f, 3.f, 1.f, 0.f }; // Directional light
+        this->Light.Diffuse = Color::RGB(0x374D58);
     }
 
     // Create mesh
@@ -50,7 +47,7 @@ npr_scene::npr_scene(GL::cache& GLCache)
     {
         glGenBuffers(1, &LightsUniformBuffer);
         glBindBuffer(GL_UNIFORM_BUFFER, LightsUniformBuffer);
-        glBufferData(GL_UNIFORM_BUFFER, LightCount * sizeof(GL::light), Lights.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(GL::light), &Light, GL_DYNAMIC_DRAW);
     }
 }
 
@@ -72,9 +69,8 @@ static bool EditLight(GL::light* Light)
 
 void npr_scene::InspectLights()
 {
-    if (ImGui::TreeNode(&Lights[0], "Light"))
+    if (ImGui::TreeNode(&Light, "Light"))
     {
-        GL::light& Light = Lights[0];
         if (EditLight(&Light))
             glBufferSubData(GL_UNIFORM_BUFFER, 0 * sizeof(GL::light), sizeof(GL::light), &Light);
     
