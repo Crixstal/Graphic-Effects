@@ -87,9 +87,6 @@
     <ClCompile Include="src\tavern_scene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\demo_perso.cpp">
-      <Filter>Source Files\demo</Filter>
-    </ClCompile>
     <ClCompile Include="src\demo_npr.cpp">
       <Filter>Source Files\demo</Filter>
     </ClCompile>
@@ -172,9 +169,6 @@
     </ClInclude>
     <ClInclude Include="src\tavern_scene.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\demo_perso.h">
-      <Filter>Header Files\demo</Filter>
     </ClInclude>
     <ClInclude Include="src\demo_npr.h">
       <Filter>Header Files\demo</Filter>

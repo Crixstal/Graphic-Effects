@@ -3,11 +3,8 @@
 #include <array>
 
 #include "demo.h"
-
 #include "opengl_headers.h"
-
 #include "camera.h"
-
 #include "npr_scene.h"
 
 class demo_npr : public demo
@@ -31,6 +28,4 @@ private:
     GLuint VAO_NPR = 0;
 
     npr_scene NPRScene;
-
-    bool Wireframe = false;
 };
