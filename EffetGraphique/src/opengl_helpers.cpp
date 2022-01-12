@@ -360,3 +360,21 @@ void GL::UploadCheckerboardTexture(int Width, int Height, int SquareSize)
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Width, 0, GL_RGBA, GL_FLOAT, &Texels[0]);
 }
+
+void GL::UploadBlankCubemapTexture(int Size, int face)
+{
+	std::vector<v3> Texels(Size * Size);
+
+	for (int y = 0; y < Size; ++y)
+	{
+		for (int x = 0; x < Size; ++x)
+		{
+			int PixelIndex = x + y * Size;
+			int TileX = x / 16;
+			int TileY = y / 16;
+			Texels[PixelIndex] = ((TileX + TileY) % 2) ? v3{0.1f, 0.1f, 0.1f} : v3{0.3f, 0.3f, 0.3f};
+		}
+	}
+
+	glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGB, Size, Size, 0, GL_RGB, GL_UNSIGNED_BYTE, &Texels[0]);
+}

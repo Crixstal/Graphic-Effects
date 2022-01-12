@@ -64,4 +64,5 @@ namespace GL
     void UploadTexture(const char* Filename, int ImageFlags = 0, int* WidthOut = nullptr, int* HeightOut = nullptr);
     void UploadCubemapTexture(const char* Filename, int face, int ImageFlags = 0, int* WidthOut = nullptr, int* HeightOut = nullptr);
     void UploadCheckerboardTexture(int Width, int Height, int SquareSize);
+    void UploadBlankCubemapTexture(int Size, int face);
 }

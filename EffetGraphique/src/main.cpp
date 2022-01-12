@@ -120,7 +120,7 @@ camera_inputs GLFWGetCameraInputs(const platform_io& IO, const keyboard& Keyboar
 // Callbacks
 // ===========
 void OpenGLErrorCallback(GLenum Source, GLenum Type, GLuint Id, GLenum Severity, GLsizei Length, const GLchar* Message, const void* UserParam)
-{
+{ 
     if (Id == 1234) // TODO: Remove magic number
         return; // Wireframe::flush
     fprintf(stderr, "OpenGL log (0x%x): %s\n", Id, Message);
