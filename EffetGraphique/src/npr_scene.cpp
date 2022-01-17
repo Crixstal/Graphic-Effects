@@ -9,19 +9,13 @@ npr_scene::npr_scene(GL::cache& GLCache)
 {
     // Init light
     {
-        // (Default light, standard values)
-        GL::light DefaultLight = {};
-        DefaultLight.Enabled = true;
-        DefaultLight.Position = { 0.0f, 0.0f, 0.0f, 1.f };
-        DefaultLight.Ambient = { 0.2f, 0.2f, 0.2f };
-        DefaultLight.Diffuse = { 1.0f, 1.0f, 1.0f };
-        DefaultLight.Specular = { 0.0f, 0.0f, 0.0f };
-        DefaultLight.Attenuation = { 1.0f, 0.0f, 0.0f };
-
-        // Sun light
-        this->Light = DefaultLight;
-        this->Light.Position = { 1.f, 3.f, 1.f, 0.f }; // Directional light
-        this->Light.Diffuse = Color::RGB(0x374D58);
+        this->Light.Enabled = true;
+        this->Light.Position = { 1.f, 3.f, 1.f, 0.f };
+        this->Light.Ambient = { 0.2f, 0.2f, 0.2f };
+        //this->Light.Diffuse = { 0.7f, 0.7f, 0.2f };
+        this->Light.Diffuse = { 1.0f, 1.0f, 01.0f };
+        this->Light.Specular = { 0.0f, 0.0f, 0.0f };
+        this->Light.Attenuation = { 1.0f, 0.0f, 0.0f };
     }
 
     // Create mesh
@@ -62,15 +56,22 @@ static bool EditLight(GL::light* Light)
 {
     bool Result =
         ImGui::Checkbox("Enabled", (bool*)&Light->Enabled)
-        + ImGui::SliderFloat4("Position", Light->Position.e, -10.f, 10.f);
+        + ImGui::SliderFloat4("Position", Light->Position.e, -4.f, 4.f);
+        + ImGui::ColorEdit3("Ambient", Light->Ambient.e)
+        + ImGui::ColorEdit3("Diffuse", Light->Diffuse.e)
+        + ImGui::ColorEdit3("Specular", Light->Specular.e);
 
     return Result;
 }
 
 void npr_scene::InspectLights()
 {
+    const char* warning = "Only position works if GoochShading true";
+
     if (ImGui::TreeNode(&Light, "Light"))
     {
+        ImGui::Text("%s", warning);
+
         if (EditLight(&Light))
             glBufferSubData(GL_UNIFORM_BUFFER, 0 * sizeof(GL::light), sizeof(GL::light), &Light);
     

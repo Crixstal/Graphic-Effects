@@ -29,9 +29,9 @@ uniform mat4 uView;
 uniform mat4 uModelNormalMatrix;
 
 // Varyings
-out vec2 vUV;
-out vec3 vPos;    // Vertex position in view-space
-out vec3 vNormal; // Vertex normal in view-space
+flat out vec2 vUV;
+flat out vec3 vPos;    // Vertex position in view-space
+flat out vec3 vNormal; // Vertex normal in view-space
 
 void main()
 {
@@ -48,14 +48,17 @@ void main()
 
 static const char* gFragmentShaderStr = R"GLSL(
 // Varyings
-in vec2 vUV;
-in vec3 vPos;
-in vec3 vNormal;
+flat in vec2 vUV;
+flat in vec3 vPos;
+flat in vec3 vNormal;
 
 // Uniforms
 uniform mat4 uProjection;
 uniform vec3 uViewPosition;
 uniform bool uIsOutline;
+uniform bool uGoochShading;
+uniform sampler2D uDiffuseTexture;
+uniform sampler2D uEmissiveTexture;
 
 // Uniform blocks
 layout(std140) uniform uLightBlock
@@ -65,6 +68,18 @@ layout(std140) uniform uLightBlock
 
 // Shader outputs
 out vec4 oColor;
+
+light_shade_result get_lights_shading()
+{
+    light_shade_result lightResult = light_shade_result(vec3(0.0), vec3(0.0), vec3(0.0));
+
+    light_shade_result light = light_shade(uLight, gDefaultMaterial.shininess, uViewPosition, vPos, normalize(vNormal));
+    lightResult.ambient  += light.ambient;
+    lightResult.diffuse  += light.diffuse;
+    lightResult.specular += light.specular;
+
+    return lightResult;
+}
 
 vec4 gooch_shading(vec4 m_color, //color of the mesh
                    float m_shine, //shininess of the surface
@@ -80,7 +95,7 @@ vec4 gooch_shading(vec4 m_color, //color of the mesh
     float NL = dot(normalize(v_normal), normalize(l_direction));
     
     float it = ((1 + NL) / 2);
-    vec3 color = (1-it) * (vec3(0, 0, 0.4) + a*m_color.xyz) + it * (vec3(0.4, 0.4, 0) + b*m_color.xyz);
+    vec3 color = (1-it) * (vec3(0, 0, 0.4) + a*m_color.xyz) + it * (vec3(1, 0.3, 0) + b*m_color.xyz);
     
     //Highlights
     vec3 R = reflect( -normalize(l_direction), normalize(v_normal) );
@@ -93,11 +108,24 @@ vec4 gooch_shading(vec4 m_color, //color of the mesh
 
 void main()
 {
-    if (uIsOutline)
-        oColor = vec4(0.0, 0.0, 0.0, 1.0);
-
+    if (!uGoochShading)
+    {
+        // Compute phong shading
+        light_shade_result lightResult = get_lights_shading();
+        
+        vec3 diffuseColor  = gDefaultMaterial.diffuse * lightResult.diffuse; // * texture(uDiffuseTexture, vUV).rgb;
+        vec3 ambientColor  = gDefaultMaterial.ambient * lightResult.ambient;
+        vec3 specularColor = gDefaultMaterial.specular * lightResult.specular;
+        vec3 emissiveColor = gDefaultMaterial.emission; // + texture(uEmissiveTexture, vUV).rgb
+        
+        // Apply light color
+        oColor = vec4((ambientColor + diffuseColor + specularColor + emissiveColor), 1.0);
+    }
     else
         oColor = gooch_shading(vec4(gDefaultMaterial.ambient, 1.0), gDefaultMaterial.shininess, uLight.position.xyz, vNormal, uViewPosition);
+
+    if (uIsOutline)
+        oColor = vec4(0.0, 0.0, 0.0, 1.0);
 })GLSL";
 #pragma endregion
 
@@ -171,6 +199,8 @@ void demo_npr::DisplayDebugUI()
 {
     if (ImGui::TreeNodeEx("demo_npr", ImGuiTreeNodeFlags_Framed))
     {
+        ImGui::Checkbox("GoochShading", &GoochShading);
+
         // Debug display
         if (ImGui::TreeNodeEx("Camera"))
         {
@@ -200,34 +230,42 @@ void demo_npr::RenderNPRModel(const mat4& ProjectionMatrix, const mat4& ViewMatr
     glUniformMatrix4fv(glGetUniformLocation(Program, "uView"), 1, GL_FALSE, ViewMatrix.e);
     glUniformMatrix4fv(glGetUniformLocation(Program, "uModelNormalMatrix"), 1, GL_FALSE, NormalMatrix.e);
     glUniform3fv(glGetUniformLocation(Program, "uViewPosition"), 1, Camera.Position.e);
+    glUniform1i(glGetUniformLocation(Program, "uGoochShading"), GoochShading);
 
     // Bind uniform buffer and textures
-    //glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_BLOCK_BINDING_POINT, NPRScene.LightsUniformBuffer);
-    //glActiveTexture(GL_TEXTURE0);
-    //glBindTexture(GL_TEXTURE_2D, NPRScene.DiffuseTexture);
-    //glActiveTexture(GL_TEXTURE1);
-    //glBindTexture(GL_TEXTURE_2D, NPRScene.EmissiveTexture);
-    //glActiveTexture(GL_TEXTURE0); // Reset active texture just in case
+    glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_BLOCK_BINDING_POINT, NPRScene.LightsUniformBuffer);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, NPRScene.DiffuseTexture);
+    glActiveTexture(GL_TEXTURE0); // Reset active texture just in case
 
-    //DRAW MESH A FIRST TIME
-    glBindVertexArray(VAO_NPR);
-    glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
+    if (!GoochShading)
+    {
+        glBindVertexArray(VAO_NPR);
+        glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
+    }
 
-    glUniform1i(glGetUniformLocation(Program, "uIsOutline"), 1);
+    else
+    {
+        //DRAW MESH A FIRST TIME
+        glBindVertexArray(VAO_NPR);
+        glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
 
-    glCullFace(GL_FRONT);
-    glDepthFunc(GL_LEQUAL);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    
-    glLineWidth(6);
+        glUniform1i(glGetUniformLocation(Program, "uIsOutline"), 1);
 
-    //DRAW MESH A SECOND TIME
-    glBindVertexArray(VAO_NPR);
-    glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
+        glCullFace(GL_FRONT);
+        glDepthFunc(GL_LEQUAL);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    glUniform1i(glGetUniformLocation(Program, "uIsOutline"), 0);
+        glLineWidth(4);
 
-    glCullFace(GL_BACK);
-    glDepthFunc(GL_LESS);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        //DRAW MESH A SECOND TIME
+        glBindVertexArray(VAO_NPR);
+        glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
+
+        glUniform1i(glGetUniformLocation(Program, "uIsOutline"), 0);
+
+        glCullFace(GL_BACK);
+        glDepthFunc(GL_LESS);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
 }

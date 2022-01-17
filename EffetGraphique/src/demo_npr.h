@@ -28,4 +28,6 @@ private:
     GLuint VAO_NPR = 0;
 
     npr_scene NPRScene;
+
+    bool GoochShading = false;
 };
