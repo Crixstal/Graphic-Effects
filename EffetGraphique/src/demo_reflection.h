@@ -15,6 +15,7 @@ public:
     void DisplayDebugUI();
     void Render(const platform_io& IO, bool renderMirrorEffects, camera* customCamera = nullptr, mat4* projMat = nullptr);
 private:
+    void CreateCubemapFromModelMat(mat4 modelMat, const platform_io& IO);
     void CreateCubemapFromPos(v3 camPos, const platform_io& IO);
 
     // 3d camera
@@ -31,9 +32,6 @@ private:
     GLuint customTexture = 0;
     GLuint skybox = 0;
     GLuint reflectionCubemap = 0;
-    GLuint reflectionFramebuffers[6] = {};
-    GLuint reflectionRenderBuffers[6] = {};
-    GLuint reflectionTextures[6] = {};
 
     // Meshes
     // Quad

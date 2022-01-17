@@ -131,7 +131,7 @@ void main()
 {
     vec3 viewVec = normalize(vPos - uCamPos);
     vec3 reflectVec = reflect(viewVec, normalize(vNormal));
-    reflectVec.z = -reflectVec.z;
+    //reflectVec.z = -reflectVec.z;
     oColor = texture(uCubemap, reflectVec);
 })GLSL";
 #pragma endregion
@@ -157,7 +157,7 @@ void main()
     float rfrRatio = 1.0 / 1.52;
     vec3 viewVec = normalize(vPos - uCamPos);
     vec3 reflectVec = refract(viewVec, normalize(vNormal), rfrRatio);
-    reflectVec.z = -reflectVec.z;
+    //reflectVec.z = -reflectVec.z;
     oColor = texture(uCubemap, reflectVec);
 })GLSL";
 #pragma endregion
@@ -171,6 +171,7 @@ static void DrawQuad(GLuint Program, mat4 ModelViewProj)
 
 static void DrawMirror(GLuint Program, mat4 Model)
 {
+    glUseProgram(Program);
     glUniformMatrix4fv(glGetUniformLocation(Program, "uModel"), 1, GL_FALSE, Model.e);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 }
@@ -202,42 +203,6 @@ demo_reflection::demo_reflection()
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     }
     glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-
-    /*
-    // Framebuffer/texture used to generate reflection/refraction cubemaps
-    for (int i = 0; i < 6; i++)
-    {
-        // Framebuffer
-        glGenFramebuffers(1, &reflectionFramebuffers[i]);
-        glBindFramebuffer(GL_FRAMEBUFFER, reflectionFramebuffers[i]);
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LEQUAL);
-        glEnable(GL_CULL_FACE);
-
-        //glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, reflectionCubemap, 0);
-
-        // Texture 
-        glGenTextures(1, &reflectionTextures[i]);
-        glBindTexture(GL_TEXTURE_2D, reflectionTextures[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, REFLECTION_RES, REFLECTION_RES, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        // Attach texture to framebuffer
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, reflectionTextures[i], 0);
-        
-        glGenRenderbuffers(1, &reflectionRenderBuffers[i]);
-        glBindRenderbuffer(GL_RENDERBUFFER, reflectionRenderBuffers[i]);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, REFLECTION_RES, REFLECTION_RES);
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, reflectionRenderBuffers[i]);
-    
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            std::cout << "[ERROR] FRAMEBUFFER " << i << " is not complete!" << std::endl;
-    }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    */
-
 
     // Create a descriptor based on the `struct vertex` format
     vertex_descriptor Descriptor = {};
@@ -384,8 +349,6 @@ demo_reflection::~demo_reflection()
     glDeleteProgram(SBProgram);
     glDeleteProgram(RFXProgram);
     glDeleteProgram(RFRProgram);
-
-    glDeleteTextures(6, reflectionTextures);
 }
 #pragma endregion
 
@@ -431,13 +394,17 @@ void demo_reflection::Render(const platform_io& IO, bool renderMirrorEffects, ca
 
     glBindTexture(GL_TEXTURE_2D, customTexture);
 
-    // Sphere
+    // Spheres
     {
         glUseProgram(Program);
         mat4 ModelMatrix = Mat4::Translate({ 0.f, -1.f * sinf(IO.Time), -1.f });
         mat4 mvp = ProjectionMatrix * ViewMatrix * ModelMatrix;
         glUniformMatrix4fv(glGetUniformLocation(Program, "uModelViewProj"), 1, GL_FALSE, mvp.e);
         glBindVertexArray(sphereVAO);
+        glDrawArrays(GL_TRIANGLES, 0, sphereVertexCount);
+        ModelMatrix = Mat4::Translate({ 3.f, 0.f, 0.f });
+        mvp = ProjectionMatrix * ViewMatrix * ModelMatrix;
+        glUniformMatrix4fv(glGetUniformLocation(Program, "uModelViewProj"), 1, GL_FALSE, mvp.e);
         glDrawArrays(GL_TRIANGLES, 0, sphereVertexCount);
     }
 
@@ -466,27 +433,26 @@ void demo_reflection::Render(const platform_io& IO, bool renderMirrorEffects, ca
         glBindVertexArray(VAO); // Bind quad mesh
         v3 ObjectPosition = { 0.f, 0.f, -3.f };
 
-        CreateCubemapFromPos(ObjectPosition, IO);
+        mat4 ModelMatrix = Mat4::Translate(ObjectPosition);
+        
+        CreateCubemapFromModelMat(ModelMatrix, IO);
         glBindTexture(GL_TEXTURE_CUBE_MAP, reflectionCubemap);
 
-
-        mat4 ModelMatrix = Mat4::Translate(ObjectPosition);
-        ModelMatrix = ModelMatrix * Mat4::RotateY(IO.Time * timeScale);
-
         DrawMirror(showRefraction ? RFRProgram : RFXProgram, ModelMatrix);
 
-        ModelMatrix = ModelMatrix * Mat4::RotateY(Math::Pi());
+        ModelMatrix = Mat4::RotateY(Math::HalfPi()) * Mat4::Translate({ 0.f, 0.f, -3.f });
+        CreateCubemapFromModelMat(ModelMatrix, IO);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, reflectionCubemap);
         DrawMirror(showRefraction ? RFRProgram : RFXProgram, ModelMatrix);
 
-        //CreateCubemapFromPos(ObjectPosition, IO);
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, reflectionCubemap);
-        ModelMatrix = Mat4::Identity() * Mat4::RotateY(Math::HalfPi()) * Mat4::Translate({ 0.f, 0.f, -3.f });
-        DrawMirror(showRefraction ? RFRProgram : RFXProgram, ModelMatrix);
+        ModelMatrix = Mat4::Translate({ 0.f, 0.f, 0.f });
+        CreateCubemapFromModelMat(ModelMatrix, IO);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, reflectionCubemap);
+        glUseProgram(showRefraction ? RFRProgram : RFXProgram);
+        glUniformMatrix4fv(glGetUniformLocation(showRefraction ? RFRProgram : RFXProgram, "uModel"), 1, GL_FALSE, ModelMatrix.e);
 
-        //CreateCubemapFromPos(ObjectPosition, IO);
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, reflectionCubemap);
-        ModelMatrix = Mat4::Identity() * Mat4::RotateX(Math::HalfPi()) * Mat4::Translate({ 0.f, 0.f, -3.f });
-        DrawMirror(showRefraction ? RFRProgram : RFXProgram, ModelMatrix);
+        glBindVertexArray(sphereVAO);
+        glDrawArrays(GL_TRIANGLES, 0, sphereVertexCount);
     }
 
     // Skybox
@@ -544,36 +510,7 @@ void demo_reflection::DisplayDebugUI()
     {
         ImGui::Checkbox("Show refraction", &showRefraction);
 
-        if (ImGui::TreeNodeEx("Show last reflection cubemap"))
-        {
-            ImGui::Image((void*)(intptr_t)Texture, ImVec2(96, 96));
-            ImGui::SameLine();
-            ImGui::Image((void*)(intptr_t)reflectionTextures[2], ImVec2(96, 96));
-            ImGui::SameLine();
-            ImGui::Image((void*)(intptr_t)Texture, ImVec2(96, 96));
-            ImGui::SameLine();
-            ImGui::Image((void*)(intptr_t)Texture, ImVec2(96, 96));
-            
-            ImGui::Image((void*)(intptr_t)reflectionTextures[0], ImVec2(96, 96));
-            ImGui::SameLine();
-            ImGui::Image((void*)(intptr_t)reflectionTextures[4], ImVec2(96, 96));
-            ImGui::SameLine();
-            ImGui::Image((void*)(intptr_t)reflectionTextures[1], ImVec2(96, 96));
-            ImGui::SameLine();
-            ImGui::Image((void*)(intptr_t)reflectionTextures[5], ImVec2(96, 96));
-
-            ImGui::Image((void*)(intptr_t)Texture, ImVec2(96, 96));
-            ImGui::SameLine();
-            ImGui::Image((void*)(intptr_t)reflectionTextures[3], ImVec2(96, 96));
-            ImGui::SameLine();
-            ImGui::Image((void*)(intptr_t)Texture, ImVec2(96, 96));
-            ImGui::SameLine();
-            ImGui::Image((void*)(intptr_t)Texture, ImVec2(96, 96));
-
-            ImGui::TreePop();
-        }
-
-        ImGui::Checkbox("Show debug texture", &showDebugTextures);
+        ImGui::Checkbox("Show loaded textures", &showDebugTextures);
         if (showDebugTextures)
         {
             ImGui::Image((void*)(intptr_t)Texture, ImVec2(128, 128));
@@ -598,7 +535,7 @@ void demo_reflection::CreateCubemapFromPos(v3 camPos, const platform_io& IO)
         {camPos, 0, 0},              // Front
     };
 
-    mat4 ProjectionMatrix = Mat4::Perspective(Math::ToRadians(90.f), 1.f, 0.1f, REFLECTION_FAR_PLANE);
+    mat4 ProjectionMatrix = Mat4::Scale(-1.f) *  Mat4::Perspective(Math::ToRadians(90.f), 1.f, 0.1f, REFLECTION_FAR_PLANE);
     mat4 ViewMatrix = CameraGetInverseMatrix(tempCamera[0]);
 
     GLuint fbo = 0;
@@ -627,7 +564,7 @@ void demo_reflection::CreateCubemapFromPos(v3 camPos, const platform_io& IO)
      
         status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.5f, 0.1f, 0.1f, 1.0f);
         glClear(GL_DEPTH_BUFFER_BIT);
 
         Render(IO, false, &tempCamera[i], &ProjectionMatrix);
@@ -644,38 +581,71 @@ void demo_reflection::CreateCubemapFromPos(v3 camPos, const platform_io& IO)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, IO.WindowWidth, IO.WindowHeight);
 }
-/* CreateCubemapFromPos OLD BROKEN
- // Camera angles
+
+void demo_reflection::CreateCubemapFromModelMat(mat4 modelMat, const platform_io& IO)
+{
+    v3 camPos = {};
+    camPos.x = modelMat.c[3].x;
+    camPos.y = modelMat.c[3].y;
+    camPos.z = modelMat.c[3].z;
+
+    // Camera angles
     camera tempCamera[6] = {
         {camPos, Math::HalfPi(), 0}, // Right
         {camPos,-Math::HalfPi(), 0}, // Left
-        {camPos, 0, Math::HalfPi()}, // Top
-        {camPos, 0,-Math::HalfPi()}, // Bottom
+        {camPos, Math::Pi(), Math::HalfPi()}, // Top
+        {camPos, Math::Pi(),-Math::HalfPi()}, // Bottom
         {camPos, Math::Pi(), 0},     // Back
         {camPos, 0, 0},              // Front
     };
 
-    mat4 ProjectionMatrix = Mat4::Perspective(Math::ToRadians(90.f), 1.f, 0.1f, REFLECTION_FAR_PLANE);
+    mat4 ProjectionMatrix = Mat4::Scale(-1.f) * Mat4::Perspective(Math::ToRadians(90.f), 1.f, 0.1f, REFLECTION_FAR_PLANE);
     mat4 ViewMatrix = CameraGetInverseMatrix(tempCamera[0]);
 
-    //glGenTextures(1, &reflectionCubemap);
+    GLuint fbo = 0;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+    GLuint rbo = 0;
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, REFLECTION_RES, REFLECTION_RES);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+    glViewport(0, 0, REFLECTION_RES, REFLECTION_RES);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "[ERROR] Framebuffer is not complete!" << std::endl;
+
+    auto status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
 
     for (int i = 0; i < 6; i++)
     {
-        glBindFramebuffer(GL_FRAMEBUFFER, reflectionFramebuffers[i]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, reflectionCubemap, 0);
 
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+        status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(0.5f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_DEPTH_BUFFER_BIT);
 
         Render(IO, false, &tempCamera[i], &ProjectionMatrix);
 
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
         // Set cubemap face
         // glBindTexture(GL_TEXTURE_CUBE_MAP, reflectionCubemap);
         // glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     }
 
+    glBindTexture(GL_TEXTURE_CUBE_MAP, reflectionCubemap);
+    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-*/
+    glViewport(0, 0, IO.WindowWidth, IO.WindowHeight);
+
+    glDeleteFramebuffers(1, &fbo);
+    glDeleteRenderbuffers(1, &rbo);
+}
+

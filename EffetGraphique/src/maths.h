@@ -213,6 +213,17 @@ namespace Mat4
         };
     }
 
+    inline mat4 Scale(float f)
+    {
+        return
+        {
+            f,   0.f, 0.f, 0.f,
+            0.f,   f, 0.f, 0.f,
+            0.f, 0.f,   f, 0.f,
+            0.f, 0.f, 0.f, 1.f,
+        };
+    }
+
     inline mat4 RotateX(float C, float S)
     {
         return
