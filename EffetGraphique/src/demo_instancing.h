@@ -4,33 +4,31 @@
 
 #include "opengl_headers.h"
 
+#include "maths.h"
 #include "camera.h"
 
-class demo_reflection : public demo
+class demo_instancing : public demo
 {
 public:
-    demo_reflection();
-    virtual ~demo_reflection();
+    demo_instancing();
+    virtual ~demo_instancing();
     virtual void Update(const platform_io& IO);
     void DisplayDebugUI();
-    void Render(const platform_io& IO, bool renderMirrorEffects, camera* customCamera = nullptr, mat4* projMat = nullptr);
+    void Render(const platform_io& IO);
 private:
-    void CreateCubemapFromModelMat(mat4 modelMat, const platform_io& IO);
 
     // 3d camera
-    camera Camera = { {0.f, 0.f, 4.f}, 0, 0 };
+    camera Camera = {};
     
     // Shader programs
-    GLuint Program = 0;    // Base shader
-    GLuint SBProgram = 0;  // Skybox shader
-    GLuint RFXProgram = 0; // Reflection shader
-    GLuint RFRProgram = 0; // Refraction shader
+    GLuint Program = 0;     // Base shader
+    GLuint SBProgram = 0;   // Skybox shader
+    GLuint INSTProgram = 0; // Instantiate shader
 
     // Textures/cubemaps
     GLuint Texture = 0;
     GLuint customTexture = 0;
     GLuint skybox = 0;
-    GLuint reflectionCubemap = 0;
 
     // Meshes
     // Quad
@@ -54,5 +52,6 @@ private:
 
     // Misc
     float timeScale = 0.75f;
-    bool showRefraction = false;
+    int amountToInstantiate = 100;
+    v3 translations[100] = {};
 };
