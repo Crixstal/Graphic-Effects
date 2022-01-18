@@ -21,6 +21,7 @@ npr_toon_scene::npr_toon_scene(GL::cache& GLCache)
     {
         // Use vbo from GLCache
         MeshBuffer = GLCache.LoadObj("media/teapot.obj", 1.f, &this->MeshVertexCount);
+        //MeshBuffer = GLCache.LoadObj("media/fantasy_game_inn.obj", 1.f, &this->MeshVertexCount);
 
         MeshDesc.Stride = sizeof(vertex_full);
         MeshDesc.HasNormal = true;
@@ -28,6 +29,12 @@ npr_toon_scene::npr_toon_scene(GL::cache& GLCache)
         MeshDesc.PositionOffset = OFFSETOF(vertex_full, Position);
         MeshDesc.UVOffset = OFFSETOF(vertex_full, UV);
         MeshDesc.NormalOffset = OFFSETOF(vertex_full, Normal);
+    }
+
+    // Gen texture
+    {
+        DiffuseTexture = GLCache.LoadTexture("media/fantasy_game_inn_diffuse.png", IMG_FLIP | IMG_GEN_MIPMAPS);
+        EmissiveTexture = GLCache.LoadTexture("media/fantasy_game_inn_emissive.png", IMG_FLIP | IMG_GEN_MIPMAPS);
     }
 
     // Gen light uniform buffer
@@ -41,6 +48,9 @@ npr_toon_scene::npr_toon_scene(GL::cache& GLCache)
 npr_toon_scene::~npr_toon_scene()
 {
     glDeleteBuffers(1, &LightsUniformBuffer);
+    glDeleteTextures(1, &EmissiveTexture);   // From cache
+    glDeleteTextures(1, &DiffuseTexture);   // From cache
+    glDeleteBuffers(1, &MeshBuffer); // From cache
 }
 
 static bool EditLight(GL::light* Light)

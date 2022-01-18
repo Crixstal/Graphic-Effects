@@ -59,6 +59,9 @@ uniform bool uIsOutline;
 uniform bool uToonShading;
 uniform bool uFiveTone;
 
+uniform sampler2D uDiffuseTexture;
+uniform sampler2D uEmissiveTexture;
+
 // Uniform blocks
 layout(std140) uniform uLightBlock
 {
@@ -84,6 +87,7 @@ void main()
 {
     float intensity = dot(normalize(uLight.position.xyz), normalize(vNormal));
     vec4 color1 = vec4(uLight.diffuse, 1.0);
+    //vec4 color1 = texture(uDiffuseTexture, vUV);
     vec4 color2;
     
     if (uToonShading)
@@ -111,10 +115,10 @@ void main()
         // Compute phong shading
         light_shade_result lightResult = get_lights_shading();
         
-        vec3 diffuseColor  = gDefaultMaterial.diffuse * lightResult.diffuse;
+        vec3 diffuseColor  = gDefaultMaterial.diffuse * lightResult.diffuse; // * texture(uDiffuseTexture, vUV).rgb;
         vec3 ambientColor  = gDefaultMaterial.ambient * lightResult.ambient;
         vec3 specularColor = gDefaultMaterial.specular * lightResult.specular;
-        vec3 emissiveColor = gDefaultMaterial.emission;
+        vec3 emissiveColor = gDefaultMaterial.emission; // + texture(uEmissiveTexture, vUV).rgb;
         
         // Apply light color
         oColor = vec4((ambientColor + diffuseColor + specularColor + emissiveColor), 1.0);
@@ -157,6 +161,8 @@ demo_npr_toon::demo_npr_toon(GL::cache& GLCache, GL::debug& GLDebug)
     // Set uniforms that won't change
     {
         glUseProgram(Program);
+        glUniform1i(glGetUniformLocation(Program, "uDiffuseTexture"), 0);
+        glUniform1i(glGetUniformLocation(Program, "uEmissiveTexture"), 1);
         glUniformBlockBinding(Program, glGetUniformBlockIndex(Program, "uLightBlock"), LIGHT_BLOCK_BINDING_POINT);
     }
 }
@@ -238,6 +244,14 @@ void demo_npr_toon::RenderNPRModel(const mat4& ProjectionMatrix, const mat4& Vie
     glUniform3fv(glGetUniformLocation(Program, "uViewPosition"), 1, Camera.Position.e);
     glUniform1i(glGetUniformLocation(Program, "uToonShading"), ToonShading);
     glUniform1i(glGetUniformLocation(Program, "uFiveTone"), FiveTone);
+
+    // Bind uniform buffer and textures
+    glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_BLOCK_BINDING_POINT, NPRScene.LightsUniformBuffer);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, NPRScene.DiffuseTexture);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, NPRScene.EmissiveTexture);
+    glActiveTexture(GL_TEXTURE0); // Reset active texture just in case
 
    glBindVertexArray(VAO_NPR);
    glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
