@@ -10,7 +10,7 @@
 #include "maths.h"
 #include "mesh.h"
 
-#include "demo_npr.h"
+#include "demo_npr_gooch.h"
 
 const int LIGHT_BLOCK_BINDING_POINT = 0;
 
@@ -57,8 +57,6 @@ uniform mat4 uProjection;
 uniform vec3 uViewPosition;
 uniform bool uIsOutline;
 uniform bool uGoochShading;
-uniform sampler2D uDiffuseTexture;
-uniform sampler2D uEmissiveTexture;
 
 // Uniform blocks
 layout(std140) uniform uLightBlock
@@ -106,30 +104,32 @@ vec4 gooch_shading(vec4 m_color, //color of the mesh
     return vec4(color+spec.xyz, m_color.a);
 }
 
+
 void main()
-{
-    if (!uGoochShading)
+{   
+    if (uGoochShading)
+        oColor = gooch_shading(vec4(gDefaultMaterial.ambient, 1.0), gDefaultMaterial.shininess, uLight.position.xyz, vNormal, uViewPosition);
+    else
     {
         // Compute phong shading
         light_shade_result lightResult = get_lights_shading();
         
-        vec3 diffuseColor  = gDefaultMaterial.diffuse * lightResult.diffuse; // * texture(uDiffuseTexture, vUV).rgb;
+        vec3 diffuseColor  = gDefaultMaterial.diffuse * lightResult.diffuse;
         vec3 ambientColor  = gDefaultMaterial.ambient * lightResult.ambient;
         vec3 specularColor = gDefaultMaterial.specular * lightResult.specular;
-        vec3 emissiveColor = gDefaultMaterial.emission; // + texture(uEmissiveTexture, vUV).rgb
+        vec3 emissiveColor = gDefaultMaterial.emission;
         
         // Apply light color
         oColor = vec4((ambientColor + diffuseColor + specularColor + emissiveColor), 1.0);
     }
-    else
-        oColor = gooch_shading(vec4(gDefaultMaterial.ambient, 1.0), gDefaultMaterial.shininess, uLight.position.xyz, vNormal, uViewPosition);
 
     if (uIsOutline)
         oColor = vec4(0.0, 0.0, 0.0, 1.0);
+
 })GLSL";
 #pragma endregion
 
-demo_npr::demo_npr(GL::cache& GLCache, GL::debug& GLDebug)
+demo_npr_gooch::demo_npr_gooch(GL::cache& GLCache, GL::debug& GLDebug)
     : GLDebug(GLDebug), NPRScene(GLCache)
 {
     // Create shader
@@ -160,20 +160,18 @@ demo_npr::demo_npr(GL::cache& GLCache, GL::debug& GLDebug)
     // Set uniforms that won't change
     {
         glUseProgram(Program);
-        //glUniform1i(glGetUniformLocation(Program, "uDiffuseTexture"), 0);
-        //glUniform1i(glGetUniformLocation(Program, "uEmissiveTexture"), 1);
         glUniformBlockBinding(Program, glGetUniformBlockIndex(Program, "uLightBlock"), LIGHT_BLOCK_BINDING_POINT);
     }
 }
 
-demo_npr::~demo_npr()
+demo_npr_gooch::~demo_npr_gooch()
 {
     // Cleanup GL
     glDeleteVertexArrays(1, &VAO_NPR);
     glDeleteProgram(Program);
 }
 
-void demo_npr::Update(const platform_io& IO)
+void demo_npr_gooch::Update(const platform_io& IO)
 {
     const float AspectRatio = (float)IO.WindowWidth / (float)IO.WindowHeight;
     glViewport(0, 0, IO.WindowWidth, IO.WindowHeight);
@@ -195,9 +193,9 @@ void demo_npr::Update(const platform_io& IO)
     this->DisplayDebugUI();
 }
 
-void demo_npr::DisplayDebugUI()
+void demo_npr_gooch::DisplayDebugUI()
 {
-    if (ImGui::TreeNodeEx("demo_npr", ImGuiTreeNodeFlags_Framed))
+    if (ImGui::TreeNodeEx("demo_npr_gooch", ImGuiTreeNodeFlags_Framed))
     {
         ImGui::Checkbox("GoochShading", &GoochShading);
 
@@ -215,7 +213,7 @@ void demo_npr::DisplayDebugUI()
     }
 }
 
-void demo_npr::RenderNPRModel(const mat4& ProjectionMatrix, const mat4& ViewMatrix, const mat4& ModelMatrix)
+void demo_npr_gooch::RenderNPRModel(const mat4& ProjectionMatrix, const mat4& ViewMatrix, const mat4& ModelMatrix)
 {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -232,24 +230,12 @@ void demo_npr::RenderNPRModel(const mat4& ProjectionMatrix, const mat4& ViewMatr
     glUniform3fv(glGetUniformLocation(Program, "uViewPosition"), 1, Camera.Position.e);
     glUniform1i(glGetUniformLocation(Program, "uGoochShading"), GoochShading);
 
-    // Bind uniform buffer and textures
-    glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_BLOCK_BINDING_POINT, NPRScene.LightsUniformBuffer);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, NPRScene.DiffuseTexture);
-    glActiveTexture(GL_TEXTURE0); // Reset active texture just in case
-
-    if (!GoochShading)
-    {
-        glBindVertexArray(VAO_NPR);
-        glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
-    }
-
-    else
+    glBindVertexArray(VAO_NPR);
+    glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
+    
+    if (GoochShading)
     {
         //DRAW MESH A FIRST TIME
-        glBindVertexArray(VAO_NPR);
-        glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
-
         glUniform1i(glGetUniformLocation(Program, "uIsOutline"), 1);
 
         glCullFace(GL_FRONT);
