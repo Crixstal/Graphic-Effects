@@ -244,7 +244,7 @@ int main(int argc, char* argv[])
         // First update to pass to demo constructors
         GLFWPlatformIOUpdate(App.Window, &App.IO);
         
-        int DemoId = 7; // Change this to start with another demo
+        int DemoId = 8; // Change this to start with another demo
         std::unique_ptr<demo> Demos[] =
         {
             std::make_unique<demo_base>(GLCache, GLDebug),
