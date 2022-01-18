@@ -4,11 +4,11 @@
 #include "opengl_helpers.h"
 
 // NPR scene data (mapped on GPU)
-class npr_scene
+class npr_gooch_scene
 {
 public:
-    npr_scene(GL::cache& GLCache);
-    ~npr_scene();
+    npr_gooch_scene(GL::cache& GLCache);
+    ~npr_gooch_scene();
     
     // Mesh
     GLuint MeshBuffer = 0;

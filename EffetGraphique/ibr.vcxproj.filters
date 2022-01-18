@@ -87,16 +87,22 @@
     <ClCompile Include="src\tavern_scene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\demo_npr.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\demo_skybox.cpp">
       <Filter>Source Files\demo</Filter>
     </ClCompile>
     <ClCompile Include="src\demo_reflection.cpp">
       <Filter>Source Files\demo</Filter>
     </ClCompile>
-    <ClCompile Include="src\npr_scene.cpp">
+    <ClCompile Include="src\demo_npr_gooch.cpp">
+      <Filter>Source Files\demo</Filter>
+    </ClCompile>
+    <ClCompile Include="src\npr_gooch_scene.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\demo_npr_toon.cpp">
+      <Filter>Source Files\demo</Filter>
+    </ClCompile>
+    <ClCompile Include="src\npr_toon_scene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -176,16 +182,22 @@
     <ClInclude Include="src\tavern_scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\demo_npr.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\demo_skybox.h">
       <Filter>Header Files\demo</Filter>
     </ClInclude>
     <ClInclude Include="src\demo_reflection.h">
       <Filter>Header Files\demo</Filter>
     </ClInclude>
-    <ClInclude Include="src\npr_scene.h">
+    <ClInclude Include="src\demo_npr_gooch.h">
+      <Filter>Header Files\demo</Filter>
+    </ClInclude>
+    <ClInclude Include="src\npr_gooch_scene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\demo_npr_toon.h">
+      <Filter>Header Files\demo</Filter>
+    </ClInclude>
+    <ClInclude Include="src\npr_toon_scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

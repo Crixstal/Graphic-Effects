@@ -10,7 +10,7 @@
 #include "maths.h"
 #include "mesh.h"
 
-#include "demo_npr.h"
+#include "demo_npr_toon.h"
 
 const int LIGHT_BLOCK_BINDING_POINT = 0;
 
@@ -29,9 +29,9 @@ uniform mat4 uView;
 uniform mat4 uModelNormalMatrix;
 
 // Varyings
-flat out vec2 vUV;
-flat out vec3 vPos;    // Vertex position in view-space
-flat out vec3 vNormal; // Vertex normal in view-space
+out vec2 vUV;
+out vec3 vPos;    // Vertex position in view-space
+out vec3 vNormal; // Vertex normal in view-space
 
 void main()
 {
@@ -48,15 +48,17 @@ void main()
 
 static const char* gFragmentShaderStr = R"GLSL(
 // Varyings
-flat in vec2 vUV;
-flat in vec3 vPos;
-flat in vec3 vNormal;
+in vec2 vUV;
+in vec3 vPos;
+in vec3 vNormal;
 
 // Uniforms
 uniform mat4 uProjection;
 uniform vec3 uViewPosition;
 uniform bool uIsOutline;
-uniform bool uGoochShading;
+uniform bool uToonShading;
+uniform bool uFiveTone;
+
 uniform sampler2D uDiffuseTexture;
 uniform sampler2D uEmissiveTexture;
 
@@ -81,34 +83,34 @@ light_shade_result get_lights_shading()
     return lightResult;
 }
 
-vec4 gooch_shading(vec4 m_color, //color of the mesh
-                   float m_shine, //shininess of the surface
-                   vec3 l_direction, //light direction
-                   vec3 v_normal, //normal
-                   vec3 c_direction) //camera direction
-{
-    //diffuse
-    float kd = 1;
-    float a = 0.2;
-    float b = 0.6;
-
-    float NL = dot(normalize(v_normal), normalize(l_direction));
-    
-    float it = ((1 + NL) / 2);
-    vec3 color = (1-it) * (vec3(0, 0, 0.4) + a*m_color.xyz) + it * (vec3(1, 0.3, 0) + b*m_color.xyz);
-    
-    //Highlights
-    vec3 R = reflect( -normalize(l_direction), normalize(v_normal) );
-    float ER = clamp( dot( normalize(c_direction),  normalize(R)), 0, 1);
-    
-    vec4 spec = vec4(1) * pow(ER, m_shine);
-
-    return vec4(color+spec.xyz, m_color.a);
-}
-
 void main()
 {
-    if (!uGoochShading)
+    float intensity = dot(normalize(uLight.position.xyz), normalize(vNormal));
+    vec4 color1 = vec4(uLight.diffuse, 1.0);
+    //vec4 color1 = texture(uDiffuseTexture, vUV);
+    vec4 color2;
+    
+    if (uToonShading)
+    {
+        if (uFiveTone)
+        {
+            if (intensity > 0.95)       color2 = vec4(1.0, 1.0, 1.0, 1.0);
+            else if (intensity > 0.75)  color2 = vec4(0.8, 0.8, 0.8, 1.0);
+            else if (intensity > 0.50)  color2 = vec4(0.6, 0.6, 0.6, 1.0);
+            else if (intensity > 0.25)  color2 = vec4(0.4, 0.4, 0.4, 1.0);
+            else                        color2 = vec4(0.2, 0.2, 0.2, 1.0);
+        }
+        else
+        {
+            if (intensity > 0.95)       color2 = vec4(1.0, 1.0, 1.0, 1.0);
+            else if (intensity > 0.50)  color2 = vec4(0.6, 0.6, 0.6, 1.0);
+            else if (intensity > 0.25)  color2 = vec4(0.4, 0.4, 0.4, 1.0);
+            else                        color2 = vec4(0.2, 0.2, 0.2, 1.0);
+        }
+       
+        oColor = color1 * color2;
+    }
+    else
     {
         // Compute phong shading
         light_shade_result lightResult = get_lights_shading();
@@ -116,20 +118,19 @@ void main()
         vec3 diffuseColor  = gDefaultMaterial.diffuse * lightResult.diffuse; // * texture(uDiffuseTexture, vUV).rgb;
         vec3 ambientColor  = gDefaultMaterial.ambient * lightResult.ambient;
         vec3 specularColor = gDefaultMaterial.specular * lightResult.specular;
-        vec3 emissiveColor = gDefaultMaterial.emission; // + texture(uEmissiveTexture, vUV).rgb
+        vec3 emissiveColor = gDefaultMaterial.emission; // + texture(uEmissiveTexture, vUV).rgb;
         
         // Apply light color
         oColor = vec4((ambientColor + diffuseColor + specularColor + emissiveColor), 1.0);
     }
-    else
-        oColor = gooch_shading(vec4(gDefaultMaterial.ambient, 1.0), gDefaultMaterial.shininess, uLight.position.xyz, vNormal, uViewPosition);
 
     if (uIsOutline)
         oColor = vec4(0.0, 0.0, 0.0, 1.0);
+
 })GLSL";
 #pragma endregion
 
-demo_npr::demo_npr(GL::cache& GLCache, GL::debug& GLDebug)
+demo_npr_toon::demo_npr_toon(GL::cache& GLCache, GL::debug& GLDebug)
     : GLDebug(GLDebug), NPRScene(GLCache)
 {
     // Create shader
@@ -160,20 +161,20 @@ demo_npr::demo_npr(GL::cache& GLCache, GL::debug& GLDebug)
     // Set uniforms that won't change
     {
         glUseProgram(Program);
-        //glUniform1i(glGetUniformLocation(Program, "uDiffuseTexture"), 0);
-        //glUniform1i(glGetUniformLocation(Program, "uEmissiveTexture"), 1);
+        glUniform1i(glGetUniformLocation(Program, "uDiffuseTexture"), 0);
+        glUniform1i(glGetUniformLocation(Program, "uEmissiveTexture"), 1);
         glUniformBlockBinding(Program, glGetUniformBlockIndex(Program, "uLightBlock"), LIGHT_BLOCK_BINDING_POINT);
     }
 }
 
-demo_npr::~demo_npr()
+demo_npr_toon::~demo_npr_toon()
 {
     // Cleanup GL
     glDeleteVertexArrays(1, &VAO_NPR);
     glDeleteProgram(Program);
 }
 
-void demo_npr::Update(const platform_io& IO)
+void demo_npr_toon::Update(const platform_io& IO)
 {
     const float AspectRatio = (float)IO.WindowWidth / (float)IO.WindowHeight;
     glViewport(0, 0, IO.WindowWidth, IO.WindowHeight);
@@ -186,20 +187,31 @@ void demo_npr::Update(const platform_io& IO)
 
     mat4 ProjectionMatrix = Mat4::Perspective(Math::ToRadians(60.f), AspectRatio, 0.1f, 100.f);
     mat4 ViewMatrix = CameraGetInverseMatrix(Camera);
-    mat4 ModelMatrix = Mat4::Scale({ 0.01f, 0.01f, 0.01f });
+    mat4 ModelMatrix = Mat4::Scale({ 1.0f, 1.0f, 1.0f });
 
     // Render Model
     this->RenderNPRModel(ProjectionMatrix, ViewMatrix, ModelMatrix);
-    
+
     // Display debug UI
     this->DisplayDebugUI();
 }
 
-void demo_npr::DisplayDebugUI()
+void demo_npr_toon::DisplayDebugUI()
 {
-    if (ImGui::TreeNodeEx("demo_npr", ImGuiTreeNodeFlags_Framed))
+    if (ImGui::TreeNodeEx("demo_npr_toon", ImGuiTreeNodeFlags_Framed))
     {
-        ImGui::Checkbox("GoochShading", &GoochShading);
+        ImGui::Checkbox("ToonShading", &ToonShading);
+
+        if (ToonShading)
+        {
+            ImGui::Checkbox("Outline", &Outline);
+            ImGui::Checkbox("FiveTone", &FiveTone);
+        }
+        else
+        {
+            Outline = false;
+            FiveTone = false;
+        }
 
         // Debug display
         if (ImGui::TreeNodeEx("Camera"))
@@ -215,7 +227,7 @@ void demo_npr::DisplayDebugUI()
     }
 }
 
-void demo_npr::RenderNPRModel(const mat4& ProjectionMatrix, const mat4& ViewMatrix, const mat4& ModelMatrix)
+void demo_npr_toon::RenderNPRModel(const mat4& ProjectionMatrix, const mat4& ViewMatrix, const mat4& ModelMatrix)
 {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -230,26 +242,23 @@ void demo_npr::RenderNPRModel(const mat4& ProjectionMatrix, const mat4& ViewMatr
     glUniformMatrix4fv(glGetUniformLocation(Program, "uView"), 1, GL_FALSE, ViewMatrix.e);
     glUniformMatrix4fv(glGetUniformLocation(Program, "uModelNormalMatrix"), 1, GL_FALSE, NormalMatrix.e);
     glUniform3fv(glGetUniformLocation(Program, "uViewPosition"), 1, Camera.Position.e);
-    glUniform1i(glGetUniformLocation(Program, "uGoochShading"), GoochShading);
+    glUniform1i(glGetUniformLocation(Program, "uToonShading"), ToonShading);
+    glUniform1i(glGetUniformLocation(Program, "uFiveTone"), FiveTone);
 
     // Bind uniform buffer and textures
     glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_BLOCK_BINDING_POINT, NPRScene.LightsUniformBuffer);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, NPRScene.DiffuseTexture);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, NPRScene.EmissiveTexture);
     glActiveTexture(GL_TEXTURE0); // Reset active texture just in case
 
-    if (!GoochShading)
-    {
-        glBindVertexArray(VAO_NPR);
-        glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
-    }
-
-    else
-    {
+   glBindVertexArray(VAO_NPR);
+   glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
+   
+   if (Outline)
+   {
         //DRAW MESH A FIRST TIME
-        glBindVertexArray(VAO_NPR);
-        glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
-
         glUniform1i(glGetUniformLocation(Program, "uIsOutline"), 1);
 
         glCullFace(GL_FRONT);
@@ -267,5 +276,5 @@ void demo_npr::RenderNPRModel(const mat4& ProjectionMatrix, const mat4& ViewMatr
         glCullFace(GL_BACK);
         glDepthFunc(GL_LESS);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    }
+   }
 }
