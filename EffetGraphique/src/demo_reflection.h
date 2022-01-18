@@ -16,14 +16,13 @@ public:
     void Render(const platform_io& IO, bool renderMirrorEffects, camera* customCamera = nullptr, mat4* projMat = nullptr);
 private:
     void CreateCubemapFromModelMat(mat4 modelMat, const platform_io& IO);
-    void CreateCubemapFromPos(v3 camPos, const platform_io& IO);
 
     // 3d camera
     camera Camera = {};
     
     // Shader programs
-    GLuint Program = 0; // Base
-    GLuint SBProgram = 0;
+    GLuint Program = 0;    // Base shader
+    GLuint SBProgram = 0;  // Skybox shader
     GLuint RFXProgram = 0; // Reflection shader
     GLuint RFRProgram = 0; // Refraction shader
 
