@@ -18,7 +18,7 @@ private:
     void CreateCubemapFromModelMat(mat4 modelMat, const platform_io& IO);
 
     // 3d camera
-    camera Camera = {};
+    camera Camera = {3.10, 1.59, -4.13, -2.88, -0.21};
     
     // Shader programs
     GLuint Program = 0;    // Base shader
