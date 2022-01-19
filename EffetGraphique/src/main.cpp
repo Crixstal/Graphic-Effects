@@ -21,6 +21,7 @@
 #include "pg.h"
 
 #include "demo_base.h"
+#include "demo_gamma.h"
 #include "demo_skybox.h"
 #include "demo_reflection.h"
 #include "demo_instancing.h"
@@ -257,6 +258,7 @@ int main(int argc, char* argv[])
             std::make_unique<demo_skybox>(),
             std::make_unique<demo_reflection>(),
             std::make_unique<demo_instancing>(),
+            std::make_unique<demo_gamma>(GLCache, GLDebug),
             //std::make_unique<demo_pg_fbx>(GLDebug.Wireframe, GLCache),
             // TODO(demo): Add other demos here
 
