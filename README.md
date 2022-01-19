@@ -23,13 +23,13 @@ The program runs in x64, Debug and Release.
 
 ## **Implemented features**
 
-Feature                            | File (.cpp / .h)
+Feature                            | Files (.cpp / .h)
 -------                            | ------
-Skybox, reflection, refraction     | demo_skybox / demo_reflection
-NPR (Non Photorealistic Rendering) | demo_npr_gooch / demo_npr_toon
+Skybox, reflection, refraction     | demo_skybox <br> demo_reflection
+NPR                                | demo_npr_gooch<br>demo_npr_toon <br>                                  npr_gooch_scene<br>npr_toon_scene
 Gamma correction                   | demo_gamma
 Instancing                         | demo_instancing
-Classic shading modes              | demo_shading
+Classic shading modes              | demo_shading <br> shader_scene
 
 <br>
 
@@ -41,25 +41,36 @@ Classic shading modes              | demo_shading
 
 ## **References**
 ---
-- [FBO](https://learnopengl.com/Advanced-OpenGL/Framebuffers)
+Skybox
+---
 
 - [cubemaps](https://learnopengl.com/Advanced-OpenGL/Cubemaps)
 
-- [NPR : Gooch Shading](https://rendermeapangolin.wordpress.com/2015/05/07/gooch-shading/)
-- [NPR : Toon Shading](http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/toon-shading/)
-- [NPR : Toon Shading](https://stackoverflow.com/questions/5795829/using-opengl-toon-shader-in-glsl)
-- [NPR : Toon Shading](https://github.com/aglobus/toon-shading)
+NPR (Non Photorealistic Rendering)
+---
+- [Gooch Shading](https://rendermeapangolin.wordpress.com/2015/05/07/gooch-shading/)
+- [Toon Shading](http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/toon-shading/)
+- [Toon Shading](https://stackoverflow.com/questions/5795829/using-opengl-toon-shader-in-glsl)
+- [Toon Shading](https://github.com/aglobus/toon-shading)
 
+Instancing
+---
 - [Instancing](https://learnopengl.com/Advanced-OpenGL/Instancing)
 
+Gamma correction
+---
 - [Gamma Correction](https://learnopengl.com/Advanced-Lighting/Gamma-Correction)
 
+Classic shading modes
+---
 - [Flat shading](https://www.mauriciopoppe.com/notes/computer-graphics/surface-shading/flat-shading/)
 
 - [Basic lighting](https://learnopengl.com/Lighting/Basic-Lighting)
 
 - [WebGL - Gouraud / Phong shading](http://www.cs.toronto.edu/~jacobson/phong-demo/)
 
+Other
+---
 - [How to use RenderDoc](https://www.youtube.com/watch?v=ngz4NHiigIw)
 
 <br>
