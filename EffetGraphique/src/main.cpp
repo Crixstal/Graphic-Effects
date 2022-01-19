@@ -21,12 +21,13 @@
 #include "pg.h"
 
 #include "demo_base.h"
-#include "demo_gamma.h"
 #include "demo_skybox.h"
 #include "demo_reflection.h"
-#include "demo_instancing.h"
 #include "demo_npr_gooch.h"
 #include "demo_npr_toon.h"
+#include "demo_gamma.h"
+#include "demo_shader.h"
+#include "demo_instancing.h"
 #include "demo_minimal.h"
 #include "demo_pg_skybox.h"
 #include "demo_pg_billboard.h"
@@ -246,7 +247,7 @@ int main(int argc, char* argv[])
         // First update to pass to demo constructors
         GLFWPlatformIOUpdate(App.Window, &App.IO);
         
-        int DemoId = 9; // Change this to start with another demo
+        int DemoId = 0; // Change this to start with another demo
         std::unique_ptr<demo> Demos[] =
         {
             std::make_unique<demo_base>(GLCache, GLDebug),
@@ -257,10 +258,11 @@ int main(int argc, char* argv[])
             std::make_unique<demo_pg_postprocess>(App.IO, GLCache, GLDebug),
             std::make_unique<demo_skybox>(),
             std::make_unique<demo_reflection>(),
-            std::make_unique<demo_instancing>(),
-            std::make_unique<demo_gamma>(GLCache, GLDebug),
             std::make_unique<demo_npr_gooch>(GLCache, GLDebug),
             std::make_unique<demo_npr_toon>(GLCache, GLDebug),
+            std::make_unique<demo_gamma>(GLCache, GLDebug),
+            std::make_unique<demo_instancing>(),
+            std::make_unique<demo_shader>(GLCache, GLDebug),
             //std::make_unique<demo_pg_fbx>(GLDebug.Wireframe, GLCache),
             // TODO(demo): Add other demos here
 

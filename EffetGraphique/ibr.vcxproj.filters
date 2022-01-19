@@ -111,6 +111,12 @@
     <ClCompile Include="src\demo_gamma.cpp">
       <Filter>Source Files\demo</Filter>
     </ClCompile>
+    <ClCompile Include="src\shader_scene.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\demo_shader.cpp">
+      <Filter>Source Files\demo</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\camera.h">
@@ -210,6 +216,12 @@
       <Filter>Header Files\demo</Filter>
     </ClInclude>
     <ClInclude Include="src\demo_gamma.h">
+      <Filter>Header Files\demo</Filter>
+    </ClInclude>
+    <ClInclude Include="src\shader_scene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\demo_shader.h">
       <Filter>Header Files\demo</Filter>
     </ClInclude>
   </ItemGroup>

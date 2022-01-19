@@ -164,6 +164,7 @@
     <ClCompile Include="src\demo_instancing.cpp" />
     <ClCompile Include="src\demo_minimal.cpp" />
     <ClCompile Include="src\demo_reflection.cpp" />
+    <ClCompile Include="src\demo_shader.cpp" />
     <ClCompile Include="src\demo_skybox.cpp" />
     <ClCompile Include="src\demo_npr_gooch.cpp" />
     <ClCompile Include="src\demo_npr_toon.cpp" />
@@ -174,6 +175,7 @@
     <ClCompile Include="src\opengl_helpers.cpp" />
     <ClCompile Include="src\opengl_helpers_cache.cpp" />
     <ClCompile Include="src\opengl_helpers_wireframe.cpp" />
+    <ClCompile Include="src\shader_scene.cpp" />
     <ClCompile Include="src\tavern_scene.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -195,6 +197,7 @@
     <ClInclude Include="src\demo_instancing.h" />
     <ClInclude Include="src\demo_minimal.h" />
     <ClInclude Include="src\demo_reflection.h" />
+    <ClInclude Include="src\demo_shader.h" />
     <ClInclude Include="src\demo_skybox.h" />
     <ClInclude Include="src\demo_npr_gooch.h" />
     <ClInclude Include="src\demo_npr_toon.h" />
@@ -208,6 +211,7 @@
     <ClInclude Include="src\opengl_helpers_cache.h" />
     <ClInclude Include="src\opengl_helpers_wireframe.h" />
     <ClInclude Include="src\platform.h" />
+    <ClInclude Include="src\shader_scene.h" />
     <ClInclude Include="src\tavern_scene.h" />
     <ClInclude Include="src\types.h" />
   </ItemGroup>
