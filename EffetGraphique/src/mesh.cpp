@@ -195,7 +195,6 @@ void* Mesh::BuildNormalizedCube(void* Vertices, void* End, const vertex_descript
     return V;
 }
 
-
 void* Mesh::BuildInvertedCube(void* Vertices, void* End, const vertex_descriptor& Descriptor)
 {
     void* V = Vertices;
