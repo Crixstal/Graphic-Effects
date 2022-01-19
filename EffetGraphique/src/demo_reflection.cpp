@@ -570,4 +570,3 @@ void demo_reflection::CreateCubemapFromModelMat(mat4 modelMat, const platform_io
     glDeleteFramebuffers(1, &fbo);
     glDeleteRenderbuffers(1, &rbo);
 }
-

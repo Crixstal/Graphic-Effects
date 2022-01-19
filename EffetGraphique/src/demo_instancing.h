@@ -41,8 +41,10 @@ private:
     GLuint cubeVertexBuffer = 0;
     int cubeVertexCount = 0;
 
+    // Sphere
     GLuint sphereVAO = 0;
     GLuint sphereVertexBuffer = 0;
+    GLuint instanceBuffer = 0;
     int sphereVertexCount = 0;
 
     int texWidth = 0;

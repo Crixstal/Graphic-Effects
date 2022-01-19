@@ -13,9 +13,6 @@
 
 #include "pg.h"
 
-#define REFLECTION_RES 800
-#define REFLECTION_FAR_PLANE 50.f
-
 // Vertex format
 // ==================================================
 struct vertex
@@ -99,10 +96,10 @@ static const char* instVertexShaderStr = R"GLSL(
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aUV;
+layout(location = 3) in vec3 aOffset;
 
 // Uniforms
-uniform mat4 uModelViewProj;
-uniform vec3 uOffsets[100];
+uniform mat4 uViewProj;
 
 // Varyings (variables that are passed to fragment shader with perspective interpolation)
 out vec2 vUV;
@@ -110,8 +107,8 @@ out vec2 vUV;
 void main()
 {
     vUV = aUV;
-    vec3 offset = uOffsets[gl_InstanceID];
-    gl_Position = uModelViewProj * vec4(aPosition + offset, 1.0);
+    vec4 pos = vec4(aPosition + aOffset, 1.0);
+    gl_Position = uViewProj * pos;
 })GLSL";
 
 static const char* instFragmentShaderStr = R"GLSL(
@@ -202,32 +199,6 @@ demo_instancing::demo_instancing()
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, UV));
     }
 
-    // Gen sphere
-    {
-        const int lon = 25;
-        const int lat = 25;
-        // Create a sphere in RAM
-        vertex Sphere[lon * lat * 6];
-        sphereVertexCount = lon * lat * 6;
-        Mesh::BuildSphere(Sphere, Sphere + sphereVertexCount, Descriptor, lon, lat);
-
-        // Upload sphere to gpu (VRAM)
-        glGenBuffers(1, &sphereVertexBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, sphereVertexBuffer);
-        glBufferData(GL_ARRAY_BUFFER, sphereVertexCount * sizeof(vertex), Sphere, GL_STATIC_DRAW);
-
-        // Create sphere vertex array
-        glGenVertexArrays(1, &sphereVAO);
-        glBindVertexArray(sphereVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, this->sphereVertexBuffer);
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-        glEnableVertexAttribArray(2);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, Position));
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, Normal));
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, UV));
-    }
-
     // Gen texture
     {
         glGenTextures(1, &Texture);
@@ -271,10 +242,51 @@ demo_instancing::demo_instancing()
 
     // Gen instance positions
     {
-        for (int i = 0; i < 100; i++)
-            for (int y = -10; y < 10; y += 2)
-                for (int x = -10; x < 10; x += 2)
-                    translations[i] = { (float)x, (float)y, 0.f };
+        int i = 0;
+        for (int y = -10; y < 10; y += 2)
+            for (int x = -10; x < 10; x += 2)
+            {
+                translations[i] = { (float)x, (float)y, 0.f };
+                i++;
+            }
+    }
+
+    // Gen sphere
+    {
+        const int lon = 25;
+        const int lat = 25;
+        // Create a sphere in RAM
+        vertex Sphere[lon * lat * 6];
+        sphereVertexCount = lon * lat * 6;
+        Mesh::BuildSphere(Sphere, Sphere + sphereVertexCount, Descriptor, lon, lat);
+
+        // Upload sphere to gpu (VRAM)
+        glGenBuffers(1, &sphereVertexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, sphereVertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sphereVertexCount * sizeof(vertex), Sphere, GL_STATIC_DRAW);
+
+        glGenBuffers(1, &instanceBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, instanceBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(v3) * 100, &translations[0], GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        // Create sphere vertex array
+        glGenVertexArrays(1, &sphereVAO);
+        glBindVertexArray(sphereVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, sphereVertexBuffer);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, Position));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, Normal));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)OFFSETOF(vertex, UV));
+
+        // Bind instance relative pos
+        glEnableVertexAttribArray(3);
+        glBindBuffer(GL_ARRAY_BUFFER, instanceBuffer); 
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glVertexAttribDivisor(3, 1);
+
     }
 }
 
@@ -322,21 +334,33 @@ void demo_instancing::Update(const platform_io& IO)
 void demo_instancing::Render(const platform_io& IO)
 {
     // Compute model-view-proj and send it to shader
-    mat4 ProjectionMatrix = Mat4::Perspective(Math::ToRadians(60.f), (float)IO.WindowWidth / (float)IO.WindowHeight, 0.1f, 300.f);
+    mat4 ProjectionMatrix = Mat4::Perspective(Math::ToRadians(60.f), (float)IO.WindowWidth / (float)IO.WindowHeight, 0.1f, 1000.f);
     
     mat4 ViewMatrix = CameraGetInverseMatrix(Camera);
 
+    mat4 vp = ProjectionMatrix * ViewMatrix;
+
     // Draw origin
     PG::DebugRenderer()->DrawAxisGizmo(Mat4::Translate({ 0.f, 0.f, 0.f }), true, true);
+
+    mat4 ModelMatrix = Mat4::Translate({ 0.f, -1.f * sinf(IO.Time), -1.f });
+    mat4 mvp = ProjectionMatrix * ViewMatrix * ModelMatrix;
+    glUseProgram(Program);
+    glBindTexture(GL_TEXTURE_2D, Texture);
+    glUniformMatrix4fv(glGetUniformLocation(Program, "uModelViewProj"), 1, GL_FALSE, mvp.e);
+    glBindVertexArray(sphereVAO);
+    glDrawArrays(GL_TRIANGLES, 0, sphereVertexCount);
 
     // Spheres
     {
         glUseProgram(INSTProgram);
         glBindTexture(GL_TEXTURE_2D, customTexture);
+        glUniformMatrix4fv(glGetUniformLocation(INSTProgram, "uViewProj"), 1, GL_FALSE, vp.e);
 
-        for (int i = 0; i < 100; i++)
+        for (int i = 3; i < 4; i++)
         {
-            std::string uniformName = "uOffsets[" + std::to_string(i) + ']';
+            glUseProgram(INSTProgram);
+            std::string uniformName = "uOffsets[" + std::to_string(i) + "]";
             glUniform3fv(glGetUniformLocation(INSTProgram, uniformName.c_str()), 1, translations[i].e);
         }
 
@@ -355,7 +379,7 @@ void demo_instancing::Render(const platform_io& IO)
         rotateOnlyViewMatrix.c[3].x = 0;
         rotateOnlyViewMatrix.c[3].y = 0;
         rotateOnlyViewMatrix.c[3].z = 0;
-        mat4 vp = ProjectionMatrix * rotateOnlyViewMatrix;
+        vp = ProjectionMatrix * rotateOnlyViewMatrix;
 
         glBindTexture(GL_TEXTURE_CUBE_MAP, skybox);
         glUseProgram(SBProgram);

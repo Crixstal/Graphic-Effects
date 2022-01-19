@@ -179,7 +179,10 @@ void demo_gamma::Update(const platform_io& IO)
         }
     }
     else
+    {
+        glDisable(GL_FRAMEBUFFER_SRGB);
         glUniform1i(glGetUniformLocation(Program, "uUseGamma"), false);
+    }
 
     mat4 ProjectionMatrix = Mat4::Perspective(Math::ToRadians(60.f), AspectRatio, 0.1f, 100.f);
     mat4 ViewMatrix = CameraGetInverseMatrix(Camera);
