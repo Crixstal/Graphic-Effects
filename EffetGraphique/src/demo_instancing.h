@@ -18,7 +18,7 @@ public:
 private:
 
     // 3d camera
-    camera Camera = {};
+    camera Camera = { {0.f, 0.f, 4.f}, 0, 0 };
     
     // Shader programs
     GLuint Program = 0;     // Base shader

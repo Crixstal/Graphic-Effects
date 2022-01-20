@@ -300,6 +300,7 @@ demo_instancing::~demo_instancing()
     glDeleteBuffers(1, &VertexBuffer);
     glDeleteBuffers(1, &cubeVertexBuffer);
     glDeleteBuffers(1, &sphereVertexBuffer);
+    glDeleteBuffers(1, &instanceBuffer);
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteVertexArrays(1, &cubeVAO);
