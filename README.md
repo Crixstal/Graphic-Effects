@@ -17,7 +17,8 @@ The goal of the project is to use Frame Buffer Objects and to discover new graph
 
 ## **Informations**
 ---
-The program runs in x64, Debug and Release.
+The program runs in x64, Debug and Release.  
+Concerning the classical shading modes, we are not sure if the results obtained for Gouraud shading and Blinn-Phong shading are correct.
 
 <br>
 
