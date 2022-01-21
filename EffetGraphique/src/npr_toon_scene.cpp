@@ -14,7 +14,6 @@ npr_toon_scene::npr_toon_scene(GL::cache& GLCache)
         this->Light.Ambient = { 0.2f, 0.2f, 0.2f };
         this->Light.Diffuse = { 1.0f, 1.0f, 1.0f };
         this->Light.Specular = { 0.0f, 0.0f, 0.0f };
-        this->Light.Attenuation = { 1.0f, 0.0f, 0.0f };
     }
 
     // Create mesh

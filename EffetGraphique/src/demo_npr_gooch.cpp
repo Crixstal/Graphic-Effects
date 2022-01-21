@@ -242,13 +242,13 @@ void demo_npr_gooch::RenderNPRModel(const mat4& ProjectionMatrix, const mat4& Vi
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, NPRScene.EmissiveTexture);
     glActiveTexture(GL_TEXTURE0); // Reset active texture just in case
-
-    glBindVertexArray(VAO_NPR);
-    glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
     
     if (GoochShading)
     {
         //DRAW MESH A FIRST TIME
+        glBindVertexArray(VAO_NPR);
+        glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
+
         glUniform1i(glGetUniformLocation(Program, "uIsOutline"), 1);
 
         glCullFace(GL_FRONT);
@@ -266,5 +266,10 @@ void demo_npr_gooch::RenderNPRModel(const mat4& ProjectionMatrix, const mat4& Vi
         glCullFace(GL_BACK);
         glDepthFunc(GL_LESS);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
+    else
+    {
+        glBindVertexArray(VAO_NPR);
+        glDrawArrays(GL_TRIANGLES, 0, NPRScene.MeshVertexCount);
     }
 }

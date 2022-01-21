@@ -18,7 +18,20 @@ The goal of the project is to use Frame Buffer Objects and to discover new graph
 ## **Informations**
 ---
 The program runs in x64, Debug and Release.  
-Concerning the classical shading modes, we are not sure if the results obtained for Gouraud shading and Blinn-Phong shading are correct.
+Concerning demo_shader (13/13), you must modify the light position or disable/enable it to apply the correct colors.
+Same goes for demo_npr_toon (10/13).
+
+You can use the fantasy game inn with the demo_npr_toon/gooch, for this you have to :
+- uncomment the second MeshBuffer in npr_gooch/toon_scene.cpp (line 23)
+- uncomment color1 in the fragment shader in demo_npr_toon.cpp (line 90)
+- uncomment texture parts in diffuseColor and emissiveColor in demo_npr_toon/gooch.cpp
+in the fragShader
+``` c++       
+vec3 diffuseColor  = gDefaultMaterial.diffuse * lightResult.diffuse; // * texture(uDiffuseTexture, vUV).rgb;
+```
+```c++
+vec3 emissiveColor = gDefaultMaterial.emission; // + texture(uEmissiveTexture, vUV).rgb;
+```
 
 <br>
 

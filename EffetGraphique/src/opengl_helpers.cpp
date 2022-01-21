@@ -192,7 +192,7 @@ GLuint GL::CreateProgramEx(int VSStringsCount, const char** VSStrings, int FSStr
 {
 	GLuint Program = glCreateProgram();
 
-	GLuint VertexShader = GL::CompileShaderEx(GL_VERTEX_SHADER, VSStringsCount, VSStrings);
+	GLuint VertexShader = GL::CompileShaderEx(GL_VERTEX_SHADER, VSStringsCount, VSStrings, InjectLightShading);
 	GLuint FragmentShader = GL::CompileShaderEx(GL_FRAGMENT_SHADER, FSStringsCount, FSStrings, InjectLightShading);
 
 	glAttachShader(Program, VertexShader);

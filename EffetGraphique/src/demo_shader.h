@@ -32,7 +32,8 @@ private:
     bool PhongShading = false;
     bool BlinnPhongShading = false;
 
-    GLfloat ka = 0.0f;
-    GLfloat kd = 0.5f;    
+    GLfloat ka = 1.0f;
+    GLfloat kd = 1.0f;    
     GLfloat ks = 1.0f;
+    GLfloat shininess = 15.0f;
 };

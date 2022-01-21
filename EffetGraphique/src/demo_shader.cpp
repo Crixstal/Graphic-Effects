@@ -27,15 +27,17 @@ uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uModelNormalMatrix;
 
-uniform vec4 uLightPos;
-uniform vec3 uLightAmbient;
-uniform vec3 uLightDiffuse;
-uniform vec3 uLightSpecular;
 uniform vec3 uViewPosition;
 
 uniform float ka;
 uniform float kd;
 uniform float ks;
+
+// Uniform blocks
+layout(std140) uniform uLightBlock
+{
+	light uLight;
+};
 
 // Varyings
 out vec2 vUV;
@@ -47,6 +49,18 @@ flat out vec3 vPosFlat;
 flat out vec3 vNormalFlat;
 
 out vec4 vGouraudColor;
+
+light_shade_result get_lights_shading(vec3 Pos, vec3 Normal)
+{
+    light_shade_result lightResult = light_shade_result(vec3(0.0), vec3(0.0), vec3(0.0));
+    
+    light_shade_result light = light_shade(uLight, gDefaultMaterial.shininess, uViewPosition, Pos, normalize(Normal));
+    lightResult.ambient  += light.ambient;
+    lightResult.diffuse  += light.diffuse;
+    lightResult.specular += light.specular;
+
+    return lightResult;
+}
 
 void main()
 {
@@ -60,13 +74,14 @@ void main()
     vPosFlat = vPos;
     vNormalFlat = vNormal;
 
-    vec3 lightDir = normalize(uLightPos.xyz - vPos);
-    vec3 viewDir = normalize(uViewPosition - vPos);
-    vec3 reflection = reflect(-lightDir, normalize(vNormal));
-    float specular = pow(max(dot(viewDir, reflection), 0.0), 15);
-    float diff = max(dot(normalize(vNormal), lightDir), 0.0);
+    light_shade_result lightResult = get_lights_shading(vPos, vNormal);
 
-    vGouraudColor = vec4((ka * uLightAmbient + kd * uLightDiffuse + ks * specular * uLightSpecular), 1.0);
+    vec3 diffuseColor  = gDefaultMaterial.diffuse * lightResult.diffuse;
+    vec3 ambientColor  = gDefaultMaterial.ambient * lightResult.ambient;
+    vec3 specularColor = gDefaultMaterial.specular * lightResult.specular;
+    vec3 emissiveColor = gDefaultMaterial.emission;
+
+    vGouraudColor = vec4((ka * ambientColor + kd * diffuseColor + ks * specularColor + emissiveColor), 1.0);
 
 })GLSL";
 
@@ -93,6 +108,7 @@ uniform bool uFlatShading;
 uniform bool uGouraudShading;
 uniform bool uPhongShading;
 uniform bool uBlinnPhongShading;
+uniform float uShininess;
 
 // Uniform blocks
 layout(std140) uniform uLightBlock
@@ -137,10 +153,10 @@ void main()
 
     if (uBlinnPhongShading)
     {
-        vec3 lightDir = normalize(uLight.position.xyz - vPos);
+        vec3 lightDir = normalize(uLight.position.xyz);
         vec3 viewDir = normalize(uViewPosition - vPos);
         vec3 halfDir = normalize(lightDir + viewDir);
-        float specular = pow(max(dot(normalize(vNormal), halfDir), 0.0), 15);
+        float specular = pow(max(dot(normalize(vNormal), halfDir), 0.0), uShininess);
 
         oColor = vec4((ambientColor + diffuseColor + specularColor * specular + emissiveColor), 1.0);
     }
@@ -231,7 +247,10 @@ void demo_shader::DisplayDebugUI()
         }
 
         ImGui::Checkbox("Phong Shading", &PhongShading);
+
         ImGui::Checkbox("Blinn-Phong Shading", &BlinnPhongShading);
+        if (BlinnPhongShading)
+            ImGui::SliderFloat("Shininess", &shininess, 0.f, 100.f);
 
         if (ImGui::TreeNodeEx("Camera"))
         {
@@ -266,14 +285,10 @@ void demo_shader::Render(const mat4& ProjectionMatrix, const mat4& ViewMatrix, c
     glUniform1i(glGetUniformLocation(Program, "uPhongShading"), PhongShading);
     glUniform1i(glGetUniformLocation(Program, "uBlinnPhongShading"), BlinnPhongShading);
 
-    glUniform4fv(glGetUniformLocation(Program, "uLightPos"), 1, ShaderScene.Light.Position.e);
-    glUniform3fv(glGetUniformLocation(Program, "uLightAmbient"), 1, ShaderScene.Light.Ambient.e);
-    glUniform3fv(glGetUniformLocation(Program, "uLightDiffuse"), 1, ShaderScene.Light.Diffuse.e);
-    glUniform3fv(glGetUniformLocation(Program, "uLightSpecular"), 1, ShaderScene.Light.Specular.e);
-
     glUniform1f(glGetUniformLocation(Program, "ka"), ka);
     glUniform1f(glGetUniformLocation(Program, "kd"), kd);
     glUniform1f(glGetUniformLocation(Program, "ks"), ks);
+    glUniform1f(glGetUniformLocation(Program, "uShininess"), shininess);
 
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, ShaderScene.MeshVertexCount);
