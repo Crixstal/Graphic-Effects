@@ -1,17 +1,10 @@
 # **Graphic effects techniques**
 
 ## **Summary**
-- [Description](##Description)
-- [Informations](##Informations)
-- [Implemented features](##Implemented%20features)
-- [Annexes](##Annexes)
-- [References](##References)
-
-<br>
-
-## **Description**
----
-The goal of the project is to use Frame Buffer Objects and to discover new graphic effects techniques.
+- [Informations](#Informations)
+- [Implemented features](#Implemented%20features)
+- [Annexes](#Annexes)
+- [References](#References)
 
 <br>
 
@@ -89,4 +82,4 @@ Other
 
 <br>
 
-[Top of the page](#top)
+[Top of the page](#Summary)
