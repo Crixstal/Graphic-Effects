@@ -9,7 +9,7 @@
 <br>
 
 ## **Informations**
----
+
 The program runs in x64, Debug and Release.  
 Concerning demo_shader (13/13), you must modify the light position or disable/enable it to apply the correct colors.
 Same goes for demo_npr_toon (10/13).
@@ -41,13 +41,13 @@ Classic shading modes              | demo_shading <br> shader_scene
 <br>
 
 ## **Annexes**
----
+
 - Click to access the [Google Slides presentation](https://docs.google.com/presentation/d/1_0sL51XJ0z1aVeZvjUaP9i5q_txzYJ-JLWkTfv4sbDc/edit?usp=sharing)
 
 <br>
 
 ## **References**
----
+
 Skybox
 ---
 
