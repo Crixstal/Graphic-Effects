@@ -3,7 +3,6 @@
 ## **Summary**
 - [Informations](#Informations)
 - [Implemented features](#Implemented-features)
-- [Annexes](#Annexes)
 - [References](#References)
 
 <br>
@@ -37,12 +36,6 @@ NPR                                | demo_npr_gooch<br>demo_npr_toon <br>       
 Gamma correction                   | demo_gamma
 Instancing                         | demo_instancing
 Classic shading modes              | demo_shading <br> shader_scene
-
-<br>
-
-## **Annexes**
-
-- Click to access the [Google Slides presentation](https://docs.google.com/presentation/d/1_0sL51XJ0z1aVeZvjUaP9i5q_txzYJ-JLWkTfv4sbDc/edit?usp=sharing)
 
 <br>
 
