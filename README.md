@@ -2,7 +2,7 @@
 
 ## **Summary**
 - [Informations](#Informations)
-- [Implemented features](#Implemented%20features)
+- [Implemented features](#Implemented-features)
 - [Annexes](#Annexes)
 - [References](#References)
 
